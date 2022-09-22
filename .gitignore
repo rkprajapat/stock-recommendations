@@ -1,0 +1,7 @@
+# ignore dask folder
+/dask-workder-space
+
+# ignore application data folders
+/tmp
+/reports
+/historical
