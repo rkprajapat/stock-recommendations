@@ -1,7 +1,10 @@
 # ignore dask folder
-/dask-workder-space
+dask-workder-space/
+
+# ignore vs code folder
+.vscode/
 
 # ignore application data folders
-/tmp
-/reports
-/historical
+tmp/
+reports/
+historical/
