@@ -1,5 +1,5 @@
 # ignore dask folder
-dask-workder-space/*
+dask-worker-space/*
 
 # ignore vs code folder
 .vscode/
