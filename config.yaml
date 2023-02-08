@@ -1,0 +1,6 @@
+# portfolio config
+portfolio:
+  file_path: "data/portfolio.xlsx"
+
+historical:
+  folder_path: "historical"
