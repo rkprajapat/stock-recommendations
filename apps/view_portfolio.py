@@ -70,8 +70,6 @@ def calculate_total_investment(portfolio):
     # sort by profit/loss percentage
     agg_portfolio = agg_portfolio.sort_values("profit/loss percentage", ascending=False)
 
-
-
     # reset index
     agg_portfolio = agg_portfolio.reset_index()
 

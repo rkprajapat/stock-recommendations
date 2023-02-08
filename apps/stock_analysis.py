@@ -7,6 +7,8 @@ nse = Nse()
 
 from utils.config import Config
 from utils.utilities import load_portfolio, fetch_stock_history
+# import from apps folder
+from apps.view_portfolio import calculate_total_investment
 
 # create a config object
 config = Config()
@@ -119,14 +121,8 @@ def load_candlestick_chart(history, selected_ticker):
     # load stock history
     stock_history = history
 
-    # load portfolio
-    portfolio = load_portfolio()
-
-    # filter portfolio for selected ticker
-    portfolio = portfolio[portfolio["ticker"] == selected_ticker]
-
-    # find average cost of stock
-    avg_cost = portfolio["price"].mean()
+    # add a subheader
+    st.subheader("Candlestick Chart")
 
     # create a candlestick chart
     fig = go.Figure(
@@ -141,18 +137,29 @@ def load_candlestick_chart(history, selected_ticker):
         ]
     )
 
-    # add a horizontal line for average cost
-    fig.add_shape(
-        type="line",
-        x0=stock_history.index[0],
-        y0=avg_cost,
-        x1=stock_history.index[-1],
-        y1=avg_cost,
-        line=dict(color="red", width=1),
-    )
+    # add spinner
+    with st.spinner("Loading candlestick chart..."):
+        # load portfolio
+        portfolio = load_portfolio()
 
+        # get total investment
+        portfolio = calculate_total_investment(portfolio)
+
+        # filter portfolio for selected ticker
+        portfolio = portfolio[portfolio["ticker"] == selected_ticker]
+
+        # get average cost from the cell
+        avg_cost = portfolio["average_price"].iloc[0]
+
+        # show average cost
+        st.write(f"Average Cost: ₹{avg_cost:.2f}")
+
+        # add a horizontal line for average cost
+        fig.add_hline(y=avg_cost, line_width=1, line_dash="dash", line_color="red")
 
     # show candlestick chart
     st.plotly_chart(fig, use_container_width=True)
+
+
 
     

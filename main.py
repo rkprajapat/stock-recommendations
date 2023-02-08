@@ -7,6 +7,7 @@ import sys
 
 root_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)),".."))
 if root_path not in sys.path:
+	print("Adding root path to sys.path: {}".format(root_path))
 	sys.path.insert(0,root_path)
 
 
