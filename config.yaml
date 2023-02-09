@@ -4,3 +4,6 @@ portfolio:
 
 historical:
   folder_path: "historical"
+
+scores:
+  file_path: "data/scores.xlsx"

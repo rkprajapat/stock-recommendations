@@ -86,8 +86,13 @@ def app():
                 portfolio = portfolio.append(stock_data, ignore_index=True)
                 # save portfolio
                 save_portfolio(portfolio)
+                
+                # clear form
+                st.form("add_stock").empty()
+
                 # show success message
                 st.success("Stock added successfully")
+
             else:
                 # show error message
                 st.error("Invalid ticker")

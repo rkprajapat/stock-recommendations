@@ -8,3 +8,6 @@ dask-worker-space/*
 tmp/*
 reports/*
 historical/*
+
+# ignore all excel files
+*.xlsx

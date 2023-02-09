@@ -116,11 +116,11 @@ def display_portfolio(portfolio):
 
     # style percentage column to display percentage
     portfolio["Profit/Loss Percentage"] = portfolio["Profit/Loss Percentage"].map(
-        "{:.2f}%".format
+        lambda x: "{:.2%}".format(x/100)
     )
 
-        # create a table to display portfolio
-    st.table(portfolio)
+    # show portfolio with full height
+    st.dataframe(portfolio)
 
     # display total investment
     st.markdown(
@@ -167,14 +167,16 @@ def app():
     # add a title
     st.title("Portfolio")
 
-    # load portfolio
-    portfolio = load_portfolio()
+    # add spinner
+    with st.spinner("Loading Portfolio..."):
+        # load portfolio
+        portfolio = load_portfolio()
 
-    # if portfolio is empty
-    if portfolio is None:
-        # show error message
-        st.error("Portfolio is empty")
-    else:
-        # display portfolio
-        display_portfolio(portfolio)
+        # if portfolio is empty
+        if portfolio is None:
+            # show error message
+            st.error("Portfolio is empty")
+        else:
+            # display portfolio
+            display_portfolio(portfolio)
 
