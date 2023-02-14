@@ -1,5 +1,6 @@
 import yaml
 
+
 # create a config class
 class Config:
     # create a function to load config

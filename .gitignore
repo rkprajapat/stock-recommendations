@@ -10,4 +10,8 @@ reports/*
 historical/*
 
 # ignore all excel files
+*.log
+*.parquet
+*.csv
 *.xlsx
+data/portfolio.xlsx

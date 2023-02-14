@@ -1,6 +1,7 @@
-import streamlit as st
-import pandas as pd
 import base64
+
+import pandas as pd
+import streamlit as st
 from nsetools import Nse
 
 nse = Nse()
@@ -12,6 +13,7 @@ from utils.utilities import load_portfolio
 config = Config()
 # load config
 config = config.load_config()
+
 
 # write a function to calculate total investment
 def calculate_total_investment(portfolio):
@@ -26,7 +28,6 @@ def calculate_total_investment(portfolio):
     # get holding tickers
     holding_tickers = agg_portfolio["ticker"].tolist()
 
-
     # filter portfolio to keep only holding tickers
     portfolio = portfolio[portfolio["ticker"].isin(holding_tickers)]
 
@@ -34,7 +35,7 @@ def calculate_total_investment(portfolio):
     portfolio["multiplier"] = portfolio["quantity"] * portfolio["price"]
 
     # calculate total quantity, average price and total investment by ticker
-    agg_portfolio = portfolio.groupby(["ticker","company_name"]).agg(
+    agg_portfolio = portfolio.groupby(["ticker", "company_name"]).agg(
         {
             "quantity": "sum",
             "price": "mean",
@@ -43,13 +44,17 @@ def calculate_total_investment(portfolio):
     )
 
     # calculate average price
-    agg_portfolio["average_price"] = agg_portfolio["multiplier"] / agg_portfolio["quantity"]
+    agg_portfolio["average_price"] = (
+        agg_portfolio["multiplier"] / agg_portfolio["quantity"]
+    )
 
     # drop multiplier and price columns
     agg_portfolio = agg_portfolio.drop(["multiplier", "price"], axis=1)
 
     # calculate total investment
-    agg_portfolio["total_investment"] = agg_portfolio["quantity"] * agg_portfolio["average_price"]
+    agg_portfolio["total_investment"] = (
+        agg_portfolio["quantity"] * agg_portfolio["average_price"]
+    )
 
     # get latest price
     agg_portfolio["latest_price"] = agg_portfolio.index.get_level_values("ticker").map(
@@ -57,10 +62,14 @@ def calculate_total_investment(portfolio):
     )
 
     # calculate current value
-    agg_portfolio["current_value"] = agg_portfolio["quantity"] * agg_portfolio["latest_price"]
+    agg_portfolio["current_value"] = (
+        agg_portfolio["quantity"] * agg_portfolio["latest_price"]
+    )
 
     # calculate profit/loss
-    agg_portfolio["profit/loss"] = agg_portfolio["current_value"] - agg_portfolio["total_investment"]
+    agg_portfolio["profit/loss"] = (
+        agg_portfolio["current_value"] - agg_portfolio["total_investment"]
+    )
 
     # calculate profit/loss percentage
     agg_portfolio["profit/loss percentage"] = (
@@ -78,6 +87,7 @@ def calculate_total_investment(portfolio):
     agg_portfolio.index = agg_portfolio.index + 1
 
     return agg_portfolio
+
 
 # create a function to display portfolio
 def display_portfolio(portfolio):
@@ -107,7 +117,9 @@ def display_portfolio(portfolio):
         "current_value",
         "profit/loss",
     ]
-    columns_to_round_off = [str(x).replace("_", " ").title() for x in columns_to_round_off]
+    columns_to_round_off = [
+        str(x).replace("_", " ").title() for x in columns_to_round_off
+    ]
 
     # style dataframe columns to display currency and percentage
     portfolio[columns_to_round_off] = portfolio[columns_to_round_off].applymap(
@@ -116,7 +128,7 @@ def display_portfolio(portfolio):
 
     # style percentage column to display percentage
     portfolio["Profit/Loss Percentage"] = portfolio["Profit/Loss Percentage"].map(
-        lambda x: "{:.2%}".format(x/100)
+        lambda x: "{:.2%}".format(x / 100)
     )
 
     # show portfolio with full height
@@ -161,7 +173,7 @@ def get_table_download_link(df, filename):
     # create download link
     href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">Download csv file</a>'
     return href
-    
+
 
 def app():
     # add a title
@@ -179,4 +191,3 @@ def app():
         else:
             # display portfolio
             display_portfolio(portfolio)
-

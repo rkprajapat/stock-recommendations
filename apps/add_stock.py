@@ -1,5 +1,5 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 from nsetools import Nse
 
 nse = Nse()
@@ -11,6 +11,7 @@ from utils.utilities import load_portfolio, save_portfolio
 config = Config()
 # load config
 config = config.load_config()
+
 
 # create a function to validate ticker
 def validate_ticker(ticker):
@@ -32,7 +33,9 @@ def app():
         # add a text input to enter ticker and validate it
         ticker = st.text_input("Ticker", key="ticker")
         # add a date input to enter date
-        date = st.date_input("Date", key="date", max_value=pd.to_datetime("today").date())
+        date = st.date_input(
+            "Date", key="date", max_value=pd.to_datetime("today").date()
+        )
         # add inline columns
         col1, col2 = st.columns(2)
         # add a text input to enter Quantity with minimum value 1
@@ -40,7 +43,9 @@ def app():
         # add a text input to enter Price with minimum value 1.0
         price = col2.number_input("Price", key="price", min_value=1.0)
         # add a radio button to select transaction type without a default value
-        transaction_type = st.radio("Transaction Type", ("Buy", "Sell"), key="transaction_type")
+        transaction_type = st.radio(
+            "Transaction Type", ("Buy", "Sell"), key="transaction_type"
+        )
 
         # add a submit button
         submit = st.form_submit_button("Submit")
@@ -49,7 +54,6 @@ def app():
     if submit:
         # show progress bar
         with st.spinner("Adding stock..."):
-
             # if ticker is valid
             if validate_ticker(ticker):
                 # add ticker in stock data
@@ -63,7 +67,7 @@ def app():
                     stock_data["quantity"] = quantity
                 else:
                     stock_data["quantity"] = -quantity
-                
+
                 # add price in stock data
                 stock_data["price"] = price
 
@@ -81,12 +85,14 @@ def app():
                 # if portfolio is empty
                 if portfolio is None:
                     # create a portfolio
-                    portfolio = pd.DataFrame(columns=["ticker", "date", "quantity", "price"])
+                    portfolio = pd.DataFrame(
+                        columns=["ticker", "date", "quantity", "price"]
+                    )
                 # add stock data in portfolio
                 portfolio = portfolio.append(stock_data, ignore_index=True)
                 # save portfolio
                 save_portfolio(portfolio)
-                
+
                 # clear form
                 st.form("add_stock").empty()
 

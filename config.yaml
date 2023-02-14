@@ -6,4 +6,7 @@ historical:
   folder_path: "historical"
 
 scores:
-  file_path: "data/scores.xlsx"
+  file_path: "data/scores.parquet"
+
+watchlist:
+  file_path: "data/watchlist.xlsx"

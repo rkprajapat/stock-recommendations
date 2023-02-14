@@ -1,13 +1,17 @@
-import streamlit as st
-import pandas as pd
-
 import smtplib
 import ssl
 from email.message import EmailMessage
 
+from utils.sell_triggers import compile_sell_triggers
+from utils.utilities import run_daily_at_time
+
+import pandas as pd
+import streamlit as st
+
+
 def app():
     # add page title
-    st.title("Notifications")
+    st.title("Schedule Notifications")
 
     # add a subheader
     st.subheader("Receiver Emails")
@@ -30,24 +34,32 @@ def app():
                 # exit
                 return
 
-    # add a subheader
-    st.subheader("Email Schedule")
-
     # add a selectbox to select the schedule time every day between 4PM to 10PM
-    schedule_time = st.selectbox("Select schedule time", [f"{i}:00" for i in range(16, 22)], key="schedule_time")
+    schedule_time = st.selectbox(
+        "Select schedule time", [f"{i}:00" for i in range(16, 22)], key="schedule_time"
+    )
 
-    # add a subheader
-    st.subheader("Email Content")
+    # get all notifications with a spinner
+    with st.spinner("Loading notifications..."):
+        notifications = collect_triggers()
 
-    # add a text area to enter email content
-    email_content = st.text_area("Enter email content", key="email_content")
+    # show all notifications as tabs
+    for notification, content in notifications.items():
+        # add a subheader
+        st.subheader(notification)
+        # show the content
+        st.write(content)
 
     # add a button to send email
-    if st.button("Send Email"):
+    if st.button("Schedule Email"):
         # run a spinner
         with st.spinner("Sending email..."):
-            # send email
-            send_email(emails, email_content, schedule_time)
+            # loop through each notification
+            for notification, content in notifications.items():
+                # send email
+                send_email(emails, notification, content)
+                # create a scheduled job
+                # run_daily_at_time(send_email, schedule_time, notification, content)
 
 
 # validate email
@@ -60,52 +72,37 @@ def validate_email(email):
     return False
 
 
+def collect_triggers():
+    # Define notifications
+    notifications = {
+        # get sell triggers and convert to html table
+        "Sell Triggers": compile_sell_triggers(),
+    }
+
+    return notifications
+
 # use gmail account to send email
 # make sure to enable less secure apps
 # https://myaccount.google.com/lesssecureapps
-def send_email(ticker, results):
-    # get user email
-    email = st.session_state.email
-    # get user name
-    name = st.session_state.name
+def send_email(receivers, subject, content_generator):
+    sender = "Stock Analysis App <roopak.prajapat@gmail.com>"
+    password = "Garwal123$"
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
 
-    # create an email message
-    message = EmailMessage()
-    # set sender email
-    message["From"] = ""
-    # set receiver email
-    message["To"] = ""
-    # set email subject
-    message["Subject"] = f"Stock Analysis for {ticker}"
-    # set email body
-    message.set_content(f"""
-    Hi {name},
-
-
-    Here are the results of the stock analysis for {ticker}:
-
-    {results}
-
-    Regards,
-    Stock Analysis App
-    """)
-    # add an attachment
-    message.add_attachment(results, filename=f"{ticker}_analysis.txt")
-
-    # create a secure context
-    context = ssl.create_default_context()
-    # try to send email
     try:
-        # send email
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
-            # login to email server
-            server.login("", "")
+        message = content_generator
 
-            # send email
-            server.send_message(message)
-            # show a success message
-            st.success("Email sent successfully!")
-    # if email could not be sent
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.ehlo()
+        server.starttls()
+        server.login(sender, password)
+        message = f"Subject: {subject}\n\n{message}"
+        server.sendmail(sender, receivers, message)
+
+        print("Email sent successfully.")
     except Exception as e:
-        # show an error message
-        st.error(f"Email could not be sent. Please try again later. Error: {e}")
+        print("Error: ", e)
+    finally:
+        server.quit()

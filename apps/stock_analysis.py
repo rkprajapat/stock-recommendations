@@ -1,17 +1,15 @@
-import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-from nsetools import Nse
 import pandas_ta as ta
-
+import plotly.graph_objects as go
+import streamlit as st
+from nsetools import Nse
 
 nse = Nse()
 
-from utils.config import Config
-from utils.utilities import load_portfolio, fetch_stock_history
-
 # import from apps folder
 from apps.view_portfolio import calculate_total_investment
+from utils.config import Config
+from utils.utilities import fetch_stock_history, load_portfolio
 
 # create a config object
 config = Config()
@@ -228,8 +226,6 @@ def load_stock_base_stats(ticker, history):
     # get today's change percentage
     today_change_percentage = latest_quote["pChange"]
 
-
-
     # filter stock history for last 52 weeks
     stock_history = stock_history.iloc[-52:]
 
@@ -258,15 +254,13 @@ def load_stock_base_stats(ticker, history):
     col1, col2 = st.columns(2)
 
     # add current price in first column
-    col1.metric(
-        "Last Price", value=f'₹{stock_history["Close"].iloc[-1]}'
-    )
+    col1.metric("Last Price", value=f'₹{stock_history["Close"].iloc[-1]}')
 
     # add today's change in first column
     col1.metric(
         "Today's Change",
-        value=f'₹{today_change}',
-        delta=f'{today_change_percentage}%',
+        value=f"₹{today_change}",
+        delta=f"{today_change_percentage}%",
     )
 
     # add total traded quantity in first column
@@ -274,6 +268,12 @@ def load_stock_base_stats(ticker, history):
         "Total Traded Quantity",
         value=f'{latest_quote["totalTradedVolume"]:,}',
         help=f'₹{latest_quote["totalTradedValue"]} Lacs',
+    )
+
+    # add average true range in first column
+    col1.metric(
+        "Average True Range",
+        value=f'₹{calculate_atr(stock_history):.2f}',
     )
 
     # show base stats in second column as 52 Week High (% diff), 52 Week Low (% diff), 52 Week Average (% diff)
@@ -284,6 +284,16 @@ def load_stock_base_stats(ticker, history):
     # show columns border
     st.markdown("---")
 
+# calculate average true range
+def calculate_atr(history):
+    # load stock history
+    stock_history = history
+
+    # calculate average true range
+    atr = stock_history.ta.atr(length=14, append=True)
+
+    # return average true range
+    return atr.iloc[-1]
 
 # calculate average cost of a stock
 def get_average_cost(ticker):
@@ -411,10 +421,13 @@ def moving_average_chart(history, selected_ticker):
         moving_average = stock_history["Close"].rolling(window=50).mean()
         # calculate exponential moving average
         exponential_moving_average = history["Close"].ewm(span=20, adjust=False).mean()
+        # calculatre 5 days exponential moving average
+        exponential_moving_average_5 = history["Close"].ewm(span=5, adjust=False).mean()
 
         # add moving average and exponential moving average to stock history
         stock_history["SMA50"] = moving_average
         stock_history["EMA20"] = exponential_moving_average
+        stock_history["EMA5"] = exponential_moving_average_5
 
         # calculate moving average crossover
         stock_history["MA_Crossover"] = stock_history.apply(
@@ -435,6 +448,13 @@ def moving_average_chart(history, selected_ticker):
                 ),
                 go.Scatter(
                     x=stock_history.index, y=stock_history["EMA20"], name="EMA20"
+                ),
+                # add a scatter plot for 5 days exponential moving average as a dashed line
+                go.Scatter(
+                    x=stock_history.index,
+                    y=stock_history["EMA5"],
+                    name="EMA5",
+                    line=dict(width=1),
                 ),
             ]
         )
