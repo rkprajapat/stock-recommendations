@@ -26,7 +26,7 @@ def app():
     stock_data = {}
 
     # create a popup to add stock
-    with st.form("add_stock"):
+    with st.form("add_stock", clear_on_submit=True):
         # add a title
         st.title("Add Stock")
 
@@ -92,9 +92,6 @@ def app():
                 portfolio = portfolio.append(stock_data, ignore_index=True)
                 # save portfolio
                 save_portfolio(portfolio)
-
-                # clear form
-                st.form("add_stock").empty()
 
                 # show success message
                 st.success("Stock added successfully")

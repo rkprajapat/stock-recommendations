@@ -3,10 +3,14 @@ import pandas as pd
 import os, sys
 from nsetools import Nse
 
+from utils.perf_monitor import monitor_performance
+from utils.custom_logger import systemLogger
+
 nse = Nse()
 
 
 # write a function to return compile all sell triggers
+@monitor_performance
 def compile_sell_triggers():
     # create a dictionary to store all sell triggers
     sell_triggers = []
@@ -15,7 +19,7 @@ def compile_sell_triggers():
     portfolio = load_portfolio()
 
     # create a lit of all tickers in portfolio
-    tickers = portfolio["ticker"].tolist()
+    tickers = portfolio["ticker"].unique().tolist()
 
     # loop through each ticker in portfolio
     for ticker in tickers:
@@ -46,6 +50,7 @@ def compile_sell_triggers():
 # write a function that identifies if a sell trigger has been met for 20 EMA and 50 SMA
 # if the 20 EMA higher and is within 2% of the 50 SMA, then we have a sell trigger
 # return a dictionary of ticker and trigger name
+@monitor_performance
 def sell_trigger_ema_sma(ticker, stock_data):
     # create empty dictionary
     sell_triggers_ema_sma = []
@@ -80,7 +85,7 @@ def sell_trigger_ema_sma(ticker, stock_data):
     ) * 100
 
     # check if 20 EMA is higher than 50 SMA
-    if stock_data["20 EMA"].iloc[-1] > stock_data["50 SMA"].iloc[-1]:
+    if stock_data["20 EMA"].iloc[-1] < stock_data["50 SMA"].iloc[-1]:
         ema_above_sma = True
 
     # check if 20 EMA is within 2% of 50 SMA
@@ -90,9 +95,11 @@ def sell_trigger_ema_sma(ticker, stock_data):
     # check if all conditions are met
     if last_price_below_5_sma and ema_above_sma and ema_within_2_percent:
         # add to dictionary
-
         trigger = {"ticker": ticker, "trigger": "20 EMA and 50 SMA"}
         sell_triggers_ema_sma.append(trigger)
+        systemLogger.info(f"20 EMA and 50 SMA sell trigger for {ticker}")
+    else:
+        systemLogger.info(f"No 20 EMA and 50 SMA sell trigger for {ticker}")
 
     # return dictionary
     return sell_triggers_ema_sma
@@ -100,6 +107,7 @@ def sell_trigger_ema_sma(ticker, stock_data):
 # write a function to check if stock price is near 52 week high
 # if stock price is within 2% of 52 week high, then we have a sell trigger
 # return a dictionary of ticker and trigger name
+@monitor_performance
 def sell_trigger_52_week_high(ticker, stock_data):
     # create empty dictionary
     sell_triggers_52_week_high = []
@@ -120,11 +128,15 @@ def sell_trigger_52_week_high(ticker, stock_data):
             # add to dictionary
             trigger = {"ticker": ticker, "trigger": f"Near 52 Week High, current diff: {(percent_diff):.2f}%"}
             sell_triggers_52_week_high.append(trigger)
+            systemLogger.info(f"Near 52 Week High sell trigger for {ticker}")
+        else:
+            systemLogger.info(f"No 52 Week High sell trigger for {ticker}")
 
     # return dictionary
     return sell_triggers_52_week_high
 
 # create a function to identify if its a downtrend after achieving high after last golden cross
+@monitor_performance
 def sell_trigger_downtrend_after_high(ticker, stock_data):
     # create empty dictionary
     sell_triggers_downtrend_after_high = []
@@ -158,6 +170,9 @@ def sell_trigger_downtrend_after_high(ticker, stock_data):
         # add to dictionary
         trigger = {"ticker": ticker, "trigger": "Downtrend after high"}
         sell_triggers_downtrend_after_high.append(trigger)
+        systemLogger.info(f"Downtrend after high sell trigger for {ticker}")
+    else:
+        systemLogger.info(f"No downtrend after high sell trigger for {ticker}")
 
     # return dictionary
     return sell_triggers_downtrend_after_high

@@ -32,7 +32,7 @@ st.set_page_config(
 apps.add_app("Add/Update Stock", add_stock.app)
 apps.add_app("Portfolio", view_portfolio.app)
 apps.add_app("Stock Analysis", stock_analysis.app)
-apps.add_app("Notifications", send_email.app)
+apps.add_app("Triggers", send_email.app)
 apps.add_app("Stock Ranking", stock_ranking.app)
 apps.add_app("Fundamentals Update", fundamentals_update.app)
 

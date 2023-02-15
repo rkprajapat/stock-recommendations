@@ -21,6 +21,54 @@ config = Config()
 # load config
 config = config.load_config()
 
+# return current and last quarter names
+@monitor_performance
+def get_quarter_names():
+    current_qtr = datetime.now().month // 4 + 1
+
+    # get the current year
+    current_qtr_year = datetime.now().year
+
+    # current quarter key
+    current_quarter_key = (current_qtr_year, current_qtr)
+
+    # get the previous quarter
+    prev_qtr = current_qtr - 1
+
+    # if the previous quarter is 0, then it is the fourth quarter of the previous year
+    if prev_qtr == 0:
+        prev_qtr = 4
+        prev_qtr_year = current_qtr_year - 1
+    else:
+        prev_qtr_year = current_qtr_year
+
+    # previous quarter key
+    prev_quarter_key = (prev_qtr_year, prev_qtr)
+
+    def get_quarter_dates(qtr_key: tuple):
+        quarter = qtr_key[1]
+        quarter_year = qtr_key[0]
+
+        # get start and end dates for previous quarter
+        if quarter == 1:
+            quarter_start = datetime(quarter_year, 1, 1)
+            quarter_end = datetime(quarter_year, 3, 31)
+        elif quarter == 2:
+            quarter_start = datetime(quarter_year, 4, 1)
+            quarter_end = datetime(quarter_year, 6, 30)
+        elif quarter == 3:
+            quarter_start = datetime(quarter_year, 7, 1)
+            quarter_end = datetime(quarter_year, 9, 30)
+        elif quarter == 4:
+            quarter_start = datetime(quarter_year, 10, 1)
+            quarter_end = datetime(quarter_year, 12, 31)
+
+        quarter_name = 'Q' + str(quarter) + ' ' + str(quarter_year)
+
+        return quarter_name, quarter_start, quarter_end
+
+    return get_quarter_dates(current_quarter_key), get_quarter_dates(prev_quarter_key)
+
 # run a function every day at a specific time
 def run_daily_at_time(func, hour, minute):
     schedule.every().day.at("{}:{}".format(hour, minute)).do(func)
@@ -82,6 +130,31 @@ def get_stock_watchlist():
     # return stock watchlist
     return stock_watchlist
 
+# delte stock scores
+@monitor_performance
+def delete_stock_scores(ticker):
+    # get scores file path from config
+    scores_file = config.get("scores").get("file_path")
+
+    # check if scores file exists
+    if os.path.exists(scores_file):
+        # load scores from parquet file loading only for ticker with date column as datetime
+        systemLogger.info("Loading scores from file: {} for {}".format(scores_file, ticker))
+    
+        # load scores from parquet file using pyarrow engine
+        scores = pd.read_parquet(scores_file, engine="pyarrow")
+
+        # check if ticker exists in stock scores
+        if ticker in scores["ticker"].values:
+            systemLogger.info("Scores found for {}".format(ticker))
+
+            # remove ticker from scores
+            scores = scores[scores["ticker"] != ticker]
+
+            # save scores to parquet file
+            scores.to_parquet(scores_file, engine="pyarrow")
+
+            systemLogger.info("Scores deleted for {}".format(ticker))
 
 # create a function to save or retrieve stock scores
 @monitor_performance
@@ -94,18 +167,12 @@ def get_stock_scores(ticker):
         # load scores from parquet file loading only for ticker with date column as datetime
         systemLogger.info("Loading scores from file: {} for {}".format(scores_file, ticker))
     
-        # load scores from parquet file
-        scores = pd.read_parquet(scores_file)
+        # load scores from parquet file using pyarrow engine
+        scores = pd.read_parquet(scores_file, engine="pyarrow")
 
         # check if ticker exists in stock scores
         if ticker in scores["ticker"].values:
             systemLogger.info("Scores found for {}".format(ticker))
-
-            # get stock scores for ticker
-            scores = scores[scores["ticker"] == ticker]
-
-            # convert scores date to date type
-            scores["date"] = pd.to_datetime(scores["date"])
 
             # get last traded dates
             (
@@ -113,24 +180,51 @@ def get_stock_scores(ticker):
                 last_traded_date_historical,
             ) = get_last_traded_date()
 
-            # if max date is last trading date, return stock scores
-            if scores["date"].max().date() == last_traded_date_historical:
-                systemLogger.info("Scores are up to date for {}".format(ticker))
+            # get stock scores for ticker and last traded date
+            scores = scores[
+                (scores["ticker"] == ticker) & (scores["date"] == last_traded_date_historical)
+            ]
+
+            # check total records for ticker and last traded date
+            total_records = len(scores)
+            # if there is only 1 record, return scores
+            if total_records == 1:
+                print(scores.to_dict(orient="records"))
                 return scores
 
-    # calculate stock scores
-    scores = calculate_stock_scores(ticker)
+            # if there are more than 1 records, error out and exit
+            if total_records > 1:
+                systemLogger.error("Multiple scores exist for ticker: {} and date: {}".format(ticker, last_traded_date_historical))
+                delete_stock_scores(ticker)
+                total_records = 0
 
-    # update stock scores to excel file
-    update_stock_scores(scores)
+            # if there are no records, calculate stock scores
+            if total_records == 0:
+                # calculate stock scores
+                systemLogger.info("Calculating scores for {}".format(ticker))
+                scores = calculate_stock_scores(ticker)
 
-    # return stock scores
-    return scores
+                # update stock scores to excel file
+                update_stock_scores(scores)
+
+                # return stock scores
+                return scores
+        else:
+            # calculate stock scores
+            systemLogger.info("Score not found for {}".format(ticker))
+            scores = calculate_stock_scores(ticker)
+
+            # update stock scores to excel file
+            update_stock_scores(scores)
+
+            # return stock scores
+            return scores
+    return None
 
 
 # create a function to update stock scores
 @monitor_performance
-def update_stock_scores(stock_scores: dict) -> bool:
+def update_stock_scores(stock_scores) -> bool:
     # if there are no values in stock scores, return False
     if len(stock_scores) == 0:
         return False
@@ -142,52 +236,40 @@ def update_stock_scores(stock_scores: dict) -> bool:
     if os.path.exists(scores_file):
         # load scores from parquet file
         systemLogger.info("Loading scores from file: {}".format(scores_file))
-        scores = pd.read_parquet(scores_file)
+        all_scores = pd.read_parquet(scores_file, engine="pyarrow")
         # check if incoming ticker and date exists in scores
         # get incoming ticker
         incoming_ticker = stock_scores["ticker"].values[0]
-        # get incoming date and convert to date if datetime
-        if isinstance(stock_scores["date"].values[0], datetime):
-            incoming_date = stock_scores["date"].values[0].date()
-        else:
-            incoming_date = stock_scores["date"].values[0]
+        # get max date for incoming ticker
+        incoming_max_date = stock_scores["date"].values[0]
 
-        # count total rows with incoming ticker and date
-        total_rows = scores[
-            (scores["ticker"] == incoming_ticker) & (scores["date"] == incoming_date)
-        ].shape[0]
+        # get index of all rows for incoming ticker and date from all scores
+        index = all_scores[
+            (all_scores["ticker"] == incoming_ticker) & (all_scores["date"] == incoming_max_date)
+        ].index
 
-        # check if total rows is greater than 1
-        if total_rows > 1:
-            systemLogger.error("Multiple scores exist for ticker: {} and date: {}".format(incoming_ticker, incoming_date))
-            return False
-        # check if total rows is 1
-        elif total_rows == 1:
-            systemLogger.info("Updating scores for ticker: {} and date: {}".format(incoming_ticker, incoming_date))
-            # get index of row with incoming ticker and date
-            index = scores[
-                (scores["ticker"] == incoming_ticker)
-                & (scores["date"] == incoming_date)
-            ].index[0]
+        systemLogger.info("Dropping scores for ticker: {} and date: {}".format(incoming_ticker, incoming_max_date))
 
-            # find column intersection of columns in scores and incoming scores
-            intersection = scores.columns.intersection(stock_scores.columns)
+        # drop all rows for incoming ticker and date from all scores
+        all_scores.drop(index, inplace=True)
 
-            # update scores with incoming scores using index while scores has more columns than incoming scores
-            scores.loc[index, intersection] = stock_scores[intersection].values[0]
+        systemLogger.info("Adding scores for ticker: {} and date: {}".format(incoming_ticker, incoming_max_date))
+        # add incoming scores to scores
+        all_scores = pd.concat([all_scores, stock_scores], ignore_index=True)
 
-        # check if total rows is 0
-        elif total_rows == 0:
-            systemLogger.info("Adding scores for ticker: {} and date: {}".format(incoming_ticker, incoming_date))
-            # concat scores with incoming scores
-            scores = pd.concat([scores, stock_scores], ignore_index=True)
     else:
         # create scores from stock scores
-        scores = stock_scores
+        all_scores = all_scores
 
-    # save scores to parquet file with partition by ticker and date
-    systemLogger.info("Saving scores to file: {}".format(scores_file))
-    scores.to_parquet(scores_file, partition_cols=["ticker"], index=False)
+    try:
+        # save scores to parquet file with partition by ticker and date
+        systemLogger.info("Saving scores to file: {}".format(scores_file))
+
+        all_scores.to_parquet(scores_file, engine="pyarrow")
+        return True
+    except Exception as e:
+        systemLogger.error("Error saving scores to file: {}".format(scores_file))
+        return False
 
 
 # write a function to calculate stock scores
@@ -223,8 +305,14 @@ def calculate_stock_scores(ticker):
     # add a final score column
     stock_scores["final_score"] = 0
 
+    # get last traded dates
+    (
+        _,
+        last_traded_date_historical,
+    ) = get_last_traded_date()
+
     # update today's date as date and not datetime
-    stock_scores["date"] = datetime.now().date()
+    stock_scores["date"] = last_traded_date_historical
 
     # get moving averages dictionary and append to stock scores while adding final score from moving averages to final score from stock scores
     stock_scores = merge_scores(
@@ -295,75 +383,23 @@ def calculate_stock_scores(ticker):
     systemLogger.info("True range score calculated for {}".format(ticker))
 
     # acquire piotrosky score
-    stock_scores["piotroski_f_score"] = piotrosky_score(ticker)
-    systemLogger.info("Piotrosky score calculated for {}".format(ticker))
+    # TODO: Remove this after implementing piotrosky score
+    # stock_scores["piotroski_f_score"] = piotrosky_score(ticker)
 
-    # add to final score if piotrosky score is not None
-    if stock_scores["piotroski_f_score"] is not None:
-        stock_scores["final_score"] += stock_scores["piotroski_f_score"]
+    # # add to final score if piotrosky score is not None
+    # if stock_scores["piotroski_f_score"] is not None:
+    #     stock_scores["final_score"] += stock_scores["piotroski_f_score"]
 
     # convert stock scores to dataframe
     stock_scores = pd.DataFrame(stock_scores, index=[0])
 
     # update datatype for all columns except ticker and date to float
-    stock_score = stock_score.astype(
-        {col: np.float32 for col in stock_score.columns if col not in ["ticker", "date"]}
+    stock_scores = stock_scores.astype(
+        {col: np.float32 for col in stock_scores.columns if col not in ["ticker", "date"]}
     )
 
     # return stock scores
     return stock_scores
-
-
-# write a function to retrieve current quarter piotrosky score
-@monitor_performance
-def piotrosky_score(ticker):
-    # initialize piotrosky score to false
-    piotrosky_score = None
-
-    # get scores file path from config
-    scores_file = config.get("scores").get("file_path")
-
-    # check if scores file exists
-    if os.path.exists(scores_file):
-        # load scores from parquet file
-        systemLogger.info("Loading scores from parquet file")
-        scores = pd.read_parquet(scores_file)
-
-        # Get the current quarter key
-        current_quarter = (datetime.now().month - 1) // 3 + 1
-        current_year = datetime.now().year
-        quarter_key = str(current_year) + "Q" + str(current_quarter)
-
-        # convert date column to date type
-        scores["date"] = pd.to_datetime(scores["date"])
-
-        # create a new column in scores dataframe to store quarter key from date column
-        scores["quarter_key"] = scores["date"].apply(
-            lambda x: str(x.year) + "Q" + str((x.month - 1) // 3 + 1)
-        )
-
-        # check if non null piotrosky score is available for this ticker for current quarter
-        if (
-            len(
-                scores[
-                    (scores["ticker"] == ticker)
-                    & (scores["quarter_key"] == quarter_key)
-                    & (scores["piotroski_f_score"].notnull())
-                ]
-            )
-            > 0
-        ):
-            systemLogger.info("Piotrosky score available for {}".format(ticker))
-            # get the piotrosky score for this ticker for current quarter
-            piotrosky_score = scores[
-                (scores["ticker"] == ticker) & (scores["quarter_key"] == quarter_key)
-            ]["piotroski_f_score"].values[0]
-        else:
-            systemLogger.info("Piotrosky score not available for {}".format(ticker))
-
-    # return piotrosky score
-    return piotrosky_score
-
 
 # write a function to fetch stock history using nsepy
 @monitor_performance
@@ -381,7 +417,9 @@ def fetch_stock_history(stock_code):
         stock_data = pd.read_excel(stock_file, index_col="Date")
 
         if len(stock_data) == 0:
-            print(f"No Stock Data for {stock_code}")
+            systemLogger.info(
+                f"Stock Data for {stock_code} is empty. Fetching data from last 2 years"
+            )
             # calculate start date to date from last date
             start_date = date.today() - timedelta(days=365 * 2)
         else:
@@ -396,7 +434,9 @@ def fetch_stock_history(stock_code):
 
             # check if last_date is equal to last trading date
             if last_date.date() == last_traded_date_historical:
-                print(f"{stock_code}: Stock Data is up to date")
+                systemLogger.info(
+                    f"Stock Data for {stock_code} is up to date. Last Date: {last_date.date()}"
+                )
                 return stock_data
 
             # calculate start date to date from last date
@@ -408,8 +448,6 @@ def fetch_stock_history(stock_code):
     # if there is no start_date, create a start_date that is 2 years ago
     if start_date == None:
         start_date = date.today() - timedelta(days=365 * 2)
-
-    # print(f'Getting Stock Data for {stock_code} from {start_date} to {date.today()}')
 
     # get the stock data
     new_stock_data = get_history(symbol=stock_code, start=start_date, end=date.today())
@@ -485,7 +523,7 @@ def get_last_traded_date() -> tuple[date, date]:
 # write a function to save portfolio to excel file
 @monitor_performance
 def save_portfolio(portfolio):
-    print("Saving portfolio to excel file...")
+    systemLogger.info("Saving portfolio to excel file")
 
     # check if portfolio is empty
     if portfolio is None:
@@ -496,3 +534,49 @@ def save_portfolio(portfolio):
 
     # save portfolio to excel file
     portfolio.to_excel(portfolio_file_path, index=False)
+
+
+# write a function to validate if its a good buy
+@monitor_performance
+def is_good_buy(ticker):
+    try:
+        # get the stock data
+        stock_history = fetch_stock_history(ticker)
+
+        # check if stock data is empty
+        if stock_history.empty:
+            return False
+
+        # get the last traded date
+        _, last_traded_date_historical = get_last_traded_date()
+
+        # get the last date from the stock data
+        last_date = stock_history.index[-1]
+
+        # check if last_date is equal to last trading date
+        if last_date.date() != last_traded_date_historical:
+            return False
+
+        # if rsi is more than 60, return false
+        rsi = ta.rsi(stock_history["Close"], length=14)
+        if rsi[-1] > 60:
+            return False
+
+        # if macd is negative, return false
+        # stock_history["macd"] = (
+        #         stock_history["Close"].ewm(span=12, adjust=False).mean()
+        #         - stock_history["Close"].ewm(span=26, adjust=False).mean()
+        #     )
+        # stock_history["macd_signal"] = (
+        #         stock_history["macd"].ewm(span=9, adjust=False).mean()
+        #     )
+        # stock_history["macd_hist"] = stock_history["macd"] - stock_history["macd_signal"]
+
+        # macd = stock_history["macd_hist"]
+        # if macd[-1] < 0:
+        #     return False
+    except:
+        systemLogger.exception("Can not check if its a good buy for ticker: " + ticker)
+        return False
+
+    return True

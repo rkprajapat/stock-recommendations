@@ -70,7 +70,7 @@ PERF_LOG_DEFAULT_FORMAT = "|%(asctime)s|%(levelname)s|   %(message)s"
 # FORMAT FOR ALERT LEVEL
 LOG_LESSINFO_FORMAT = "|%(asctime)s|%(levelname)s|   %(message)s"
 DEFAULT_TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
-DEFAULT_FILE_LOG_DIR = os.path.join(root_path, 'src', "logs")
+DEFAULT_FILE_LOG_DIR = os.path.join(root_path, "src", "logs")
 
 
 # Class ConsoleLogger returns a logger for class calling it, logger is logging only to console,
@@ -269,8 +269,7 @@ class CustomLogger:
 
     def perflog(self, _time, _size, name):
         """Writes performance log"""
-        msg = f"{name} | Human Duration: {humanize.naturaldelta(_time)} | \
-        Human Size: {humanize.naturalsize(_size)} |Duration: {_time} seconds |Size: {_size} bytes"
+        msg = f"{name} | Human Duration: {humanize.naturaldelta(_time)} | Human Size: {humanize.naturalsize(_size)} | ({_time},{_size})"
         record = self.create_record(msg, logging.INFO)
         self.logger.handle(record)
 
@@ -334,7 +333,7 @@ def main():
 perLogger = CustomLogger(
     log_name="Perf_Log", log_format=PERF_LOG_DEFAULT_FORMAT, enable_stream=False
 )
-systemLogger = CustomLogger(log_name="System_Log")
+systemLogger = CustomLogger(log_name="System_Log", enable_stream=False)
 
 
 if __name__ == "__main__":

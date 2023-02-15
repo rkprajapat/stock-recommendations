@@ -123,7 +123,7 @@ def display_portfolio(portfolio):
 
     # style dataframe columns to display currency and percentage
     portfolio[columns_to_round_off] = portfolio[columns_to_round_off].applymap(
-        lambda x: "₹{:.2f}".format(x) if isinstance(x, float) else x
+        lambda x: "₹{:,}".format(round(x, 2)) if isinstance(x, float) else x
     )
 
     # style percentage column to display percentage

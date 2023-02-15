@@ -10,6 +10,7 @@ from utils.utilities import (
     get_stock_watchlist,
     load_portfolio,
     update_stock_scores,
+    is_good_buy,
 )
 
 from utils.custom_logger import systemLogger
@@ -85,22 +86,27 @@ def app():
             f"Time remaining: {humanize.naturaldelta(avg_time_per_ticker * (len(tickers) - index))}"
         )
 
+        # check if good buy
+        if show_all and not is_good_buy(ticker):
+            systemLogger.info(f"{ticker} is not a good buy")
+            continue
+
         if force_refresh:
             systemLogger.info("Force Refreshing Stock Ranks")
             # disable force refresh button
             st.button("Force Refresh", key="force_refresh", disabled=True)
             
             # calculate stock scores
-            stock_score: dict = calculate_stock_scores(ticker)
+            stock_score = calculate_stock_scores(ticker)
             update_stock_scores(stock_score)
-
         else:
             # get stock scores
             systemLogger.info(f"Loading stock scores for {ticker}")
-            stock_score: dict = get_stock_scores(ticker)
+            stock_score = get_stock_scores(ticker)
+            
 
         # if stock score is empty, continue to next ticker
-        if len(stock_score) == 0:
+        if stock_score is None or len(stock_score) == 0:
             systemLogger.error(f"No stock scores found for {ticker}")
             continue
 
@@ -129,6 +135,9 @@ def app():
             ]
         ]
 
+        # reset index
+        stock_ranks.reset_index(drop=True, inplace=True)
+
         # show rank table
         rank_table.dataframe(stock_ranks)
 
@@ -146,3 +155,5 @@ def app():
 
     # update progress label with total tickers processed
     progress_label.text(f"Total tickers processed: {len(tickers)}")
+
+    return

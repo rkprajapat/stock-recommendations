@@ -22,6 +22,9 @@ pandas-market-calendars = "^4.1.4"
 humanize = "^4.6.0"
 schedule = "^1.1.0"
 coloredlogs = "^15.0.1"
+pyarrow = "^11.0.0"
+watchdog = "^2.2.1"
+yfinance = "^0.2.11"
 
 
 [build-system]

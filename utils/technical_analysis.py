@@ -7,8 +7,11 @@ import pandas_ta as ta
 from nsepy import get_history
 from pandas_market_calendars import get_calendar
 
+from utils.perf_monitor import monitor_performance
+
 
 # write a function to get true range score
+@monitor_performance
 def true_range_score(df):
     # Calculate the TR score
     df["prev_close"] = df["Close"].shift(1)
@@ -30,6 +33,7 @@ def true_range_score(df):
 
 
 # write a function to get rate of change score
+@monitor_performance
 def rate_of_change_score(df):
     # Calculate the Rate of Change
     df["Rate of Change"] = ta.roc(df["Close"])
@@ -49,6 +53,7 @@ def rate_of_change_score(df):
 
 
 # write a function to get price volume trend score
+@monitor_performance
 def price_volume_trend_score(df):
     # Calculate the Price Volume Trend
     df["Price Volume Trend"] = ta.pvt(df["Close"], df["Volume"])
@@ -68,6 +73,7 @@ def price_volume_trend_score(df):
 
 
 # write a function to get positive volume index score
+@monitor_performance
 def positive_volume_index_score(df):
     # Calculate the Positive Volume Index
     df["Positive Volume Index"] = ta.pvi(df["Close"], df["Volume"])
@@ -87,6 +93,7 @@ def positive_volume_index_score(df):
 
 
 # write a function to get negative volume index score
+@monitor_performance
 def negative_volume_index_score(df):
     # Calculate the Negative Volume Index
     df["Negative Volume Index"] = ta.nvi(df["Close"], df["Volume"])
@@ -106,6 +113,7 @@ def negative_volume_index_score(df):
 
 
 # write a function to get mass index score
+@monitor_performance
 def mass_index_score(df):
     try:
         # Calculate the high-low range for the current bar and the previous 25 bars
@@ -131,6 +139,7 @@ def mass_index_score(df):
 
 
 # write a function to get keltner channel score
+@monitor_performance
 def keltner_channel_score(data):
     try:
         # calculate keltner channel score
@@ -157,6 +166,7 @@ def keltner_channel_score(data):
 
 
 # write a function to get ease of movement score
+@monitor_performance
 def ease_of_movement_score(data):
     try:
         # calculate ease of movement score
@@ -187,6 +197,7 @@ def ease_of_movement_score(data):
 
 
 # write a function to get distrended price oscillator score
+@monitor_performance
 def detrended_price_oscillator_score(data):
     try:
         # calculate distrended price oscillator score
@@ -214,6 +225,7 @@ def detrended_price_oscillator_score(data):
 
 
 # write a function to get on balance volume score
+@monitor_performance
 def on_balance_volume_score(data):
     # calculate on balance volume score
     data["OBV"] = ta.obv(data["Close"], data["Volume"])
@@ -238,6 +250,7 @@ def on_balance_volume_score(data):
 
 
 # write a function to get money flow index score
+@monitor_performance
 def money_flow_index_score(data):
     # calculate money flow index score
     data["Typical Price"] = (data["High"] + data["Low"] + data["Close"]) / 3
@@ -273,6 +286,7 @@ def money_flow_index_score(data):
 
 
 # write a function to get chaiking oscilator score
+@monitor_performance
 def chaikin_oscilator_score(data):
     # calculate chaiking oscilator score
     window_size = 10
@@ -306,6 +320,7 @@ def chaikin_oscilator_score(data):
 
 
 # write a function to get williams %R score
+@monitor_performance
 def williams_r_score(stock_history):
     # calculate williams %R score
     window_size = 14
@@ -332,6 +347,7 @@ def williams_r_score(stock_history):
 
 
 # write a function to get bolinger band score
+@monitor_performance
 def bolinger_band_score(stock_history):
     try:
         # calculate bolinger band score
@@ -372,6 +388,7 @@ def bolinger_band_score(stock_history):
 
 
 # write a function to get ultimate oscillator score
+@monitor_performance
 def ultimate_oscillator_score(stock_history):
     try:
         # calculate ultimate oscillator score
@@ -400,6 +417,7 @@ def ultimate_oscillator_score(stock_history):
 
 
 # write a function to get aroon score
+@monitor_performance
 def aroon_score(stock_history):
     try:
         # calculate aroon score
@@ -425,6 +443,7 @@ def aroon_score(stock_history):
 
 
 # write a function to get adx score
+@monitor_performance
 def adx_score(stock_history):
     try:
         # calculate adx score
@@ -451,6 +470,7 @@ def adx_score(stock_history):
 
 
 # create a function to get cci score
+@monitor_performance
 def cci_score(stock_history):
     try:
         # calculate cci score
@@ -478,6 +498,7 @@ def cci_score(stock_history):
 
 
 # create a function to get stochasitc score
+@monitor_performance
 def stochastic_score(stock_history):
     try:
         # calculate stochastic score
@@ -505,6 +526,7 @@ def stochastic_score(stock_history):
 
 
 # create a function to get rsi score
+@monitor_performance
 def rsi_score(stock_history):
     try:
         # calculate rsi score
@@ -525,6 +547,7 @@ def rsi_score(stock_history):
 
 
 # create a function to get macd score
+@monitor_performance
 def macd_score(stock_history):
     try:
         # calculate macd score
@@ -552,6 +575,7 @@ def macd_score(stock_history):
 
 
 # create a function to get moving averages score
+@monitor_performance
 def moving_averages_score(stock_history):
     # calculate 20 day moving average
     stock_history["20d"] = (

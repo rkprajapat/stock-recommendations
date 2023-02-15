@@ -19,14 +19,24 @@ config = config.load_config()
 
 # create a function to view stock data
 def app():
-    # load portfolio
-    portfolio = load_portfolio()
+    # add a title
+    st.title("Stock Analysis")
 
-    # list tickers
-    tickers = portfolio["ticker"].unique().tolist()
+    # add a checkbox to analyse portfolio
+    if st.checkbox("Analyse Portfolio"):
+        # load portfolio
+        portfolio = load_portfolio()
 
-    # create a drop down to select stock and clear screen when its value changes
-    selected_ticker = st.selectbox("Select a stock", tickers, key="stock_analysis")
+        # list tickers
+        tickers = portfolio["ticker"].unique().tolist()
+
+        # create a drop down to select stock and clear screen when its value changes
+        selected_ticker = st.selectbox("Select a stock", tickers, key="stock_analysis")
+    else:
+        # create a text input to enter stock ticker and clear screen when its value changes
+        selected_ticker = st.text_input(
+            "Enter a stock ticker", key="stock_analysis", max_chars=25
+        )
 
     # add a button to load stock history
     if st.button("Load Stock Analysis"):
@@ -226,6 +236,9 @@ def load_stock_base_stats(ticker, history):
     # get today's change percentage
     today_change_percentage = latest_quote["pChange"]
 
+    # calculate average true range
+    avg_true_range = calculate_atr(stock_history)
+
     # filter stock history for last 52 weeks
     stock_history = stock_history.iloc[-52:]
 
@@ -273,13 +286,33 @@ def load_stock_base_stats(ticker, history):
     # add average true range in first column
     col1.metric(
         "Average True Range",
-        value=f'₹{calculate_atr(stock_history):.2f}',
+        value=f'₹{avg_true_range:.2f}',
     )
 
     # show base stats in second column as 52 Week High (% diff), 52 Week Low (% diff), 52 Week Average (% diff)
     col2.metric("52 Week High", f"₹{week52_high:.2f}", f"{week52_high_diff:.2f}%")
     col2.metric("52 Week Low", f"₹{week52_low:.2f}", f"{week52_low_diff:.2f}%")
     col2.metric("52 Week Average", f"₹{week52_avg:.2f}", f"{week52_avg_diff:.2f}%")
+
+    # show columns border
+    st.markdown("---")
+
+    # calculate stop loss for buy and sell using average true range with result in multiple of 0.05
+    stop_loss_buy = round((stock_history["Close"].iloc[-1] - avg_true_range) / 0.05) * 0.05
+    stop_loss_sell = round((stock_history["Close"].iloc[-1] + avg_true_range) / 0.05) * 0.05
+
+    # convert to % of last price
+    stop_loss_buy_percent = (stop_loss_buy - stock_history["Close"].iloc[-1]) / stock_history["Close"].iloc[-1] * 100
+    stop_loss_sell_percent = (stop_loss_sell - stock_history["Close"].iloc[-1]) / stock_history["Close"].iloc[-1] * 100
+
+
+    # show stop loss for buy and sell using average true range
+    st.markdown(
+        f"**Stop Loss-M for Buy:** ₹{stop_loss_buy:.2f} ({stop_loss_buy_percent:.2f}%)"
+    )
+    st.markdown(
+        f"**Stop Loss-M for Sell:** ₹{stop_loss_sell:.2f} ({stop_loss_sell_percent:.2f}%)"
+    )
 
     # show columns border
     st.markdown("---")
@@ -299,6 +332,11 @@ def calculate_atr(history):
 def get_average_cost(ticker):
     # load portfolio
     portfolio = load_portfolio()
+
+    # check if ticker is in portfolio
+    if ticker not in portfolio["ticker"].unique():
+        # return 0
+        return 0
 
     # get total investment
     portfolio = calculate_total_investment(portfolio)
