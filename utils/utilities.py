@@ -474,9 +474,11 @@ def fetch_stock_history(stock_code):
 def load_portfolio():
     # load portfolio file path from config
     portfolio_file_path = config.get("portfolio").get("file_path")
+    systemLogger.info(f"Portfolio file path: {portfolio_file_path}")
 
     # check if portfolio file exists
     if not os.path.exists(portfolio_file_path):
+        systemLogger.info("Portfolio file does not exist")
         return None
 
     # load portfolio from excel file
