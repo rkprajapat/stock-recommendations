@@ -189,7 +189,6 @@ def get_stock_scores(ticker):
             total_records = len(scores)
             # if there is only 1 record, return scores
             if total_records == 1:
-                print(scores.to_dict(orient="records"))
                 return scores
 
             # if there are more than 1 records, error out and exit

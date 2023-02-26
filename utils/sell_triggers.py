@@ -55,46 +55,14 @@ def sell_trigger_ema_sma(ticker, stock_data):
     # create empty dictionary
     sell_triggers_ema_sma = []
 
-    # define three conditions
-    # 1. stock price is below 5 day SMA
-    # 2. 20 EMA is higher than 50 SMA
-    # 3. 20 EMA is within 2% of 50 SMA
-    last_price_below_5_sma = False
-    ema_above_sma = False
-    ema_within_2_percent = False
-
-    # calculate the 5 day SMA
-    stock_data["5 SMA"] = stock_data["Close"].rolling(window=5).mean()
-
-    # check if stock price is in downtrend with 5 day SMA
-    if stock_data["Close"].iloc[-1] < stock_data["5 SMA"].iloc[-1]:
-        last_price_below_5_sma = True
-
     # calculate the 20 EMA
     stock_data["20 EMA"] = stock_data["Close"].ewm(span=20, adjust=False).mean()
 
     # calculate the 50 SMA
     stock_data["50 SMA"] = stock_data["Close"].rolling(window=50).mean()
 
-    # calculate the difference between the 20 EMA and 50 SMA
-    stock_data["20 EMA - 50 SMA"] = stock_data["20 EMA"] - stock_data["50 SMA"]
-
-    # calculate the percentage difference between the 20 EMA and 50 SMA
-    stock_data["20 EMA - 50 SMA %"] = (
-        stock_data["20 EMA - 50 SMA"] / stock_data["50 SMA"]
-    ) * 100
-
-    # check if 20 EMA is higher than 50 SMA
-    if stock_data["20 EMA"].iloc[-1] < stock_data["50 SMA"].iloc[-1]:
-        ema_above_sma = True
-
-    # check if 20 EMA is within 2% of 50 SMA
-    if stock_data["20 EMA - 50 SMA %"].iloc[-1] < 2:
-        ema_within_2_percent = True
-
-    # check if all conditions are met
-    if last_price_below_5_sma and ema_above_sma and ema_within_2_percent:
-        # add to dictionary
+    # check if 20 EMA was higher previously and is now lower
+    if stock_data["20 EMA"].iloc[-1] > stock_data["50 SMA"].iloc[-1] and stock_data["20 EMA"].iloc[-2] < stock_data["50 SMA"].iloc[-2]:
         trigger = {"ticker": ticker, "trigger": "20 EMA and 50 SMA"}
         sell_triggers_ema_sma.append(trigger)
         systemLogger.info(f"20 EMA and 50 SMA sell trigger for {ticker}")
