@@ -15,3 +15,12 @@ historical/*
 *.csv
 *.xlsx
 data/portfolio.xlsx
+
+# ignore all pickle files
+*.pkl
+
+# ignore all pycache files
+__pycache__/*
+
+# ignore all .pyc files
+*.pyc

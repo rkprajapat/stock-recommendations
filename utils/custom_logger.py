@@ -13,10 +13,6 @@ import sys
 import coloredlogs
 import humanize
 
-root_path = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "..")
-)
-
 
 # Custom Console Logger #
 DEFAULT_LOG_LEVEL = logging.DEBUG
@@ -70,7 +66,11 @@ PERF_LOG_DEFAULT_FORMAT = "|%(asctime)s|%(levelname)s|   %(message)s"
 # FORMAT FOR ALERT LEVEL
 LOG_LESSINFO_FORMAT = "|%(asctime)s|%(levelname)s|   %(message)s"
 DEFAULT_TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
-DEFAULT_FILE_LOG_DIR = os.path.join(root_path, "src", "logs")
+
+# find the parent directory of the current file
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+DEFAULT_FILE_LOG_DIR = os.path.join(root_path, "logs")
 
 
 # Class ConsoleLogger returns a logger for class calling it, logger is logging only to console,

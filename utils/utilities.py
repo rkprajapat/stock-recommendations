@@ -209,16 +209,18 @@ def get_stock_scores(ticker):
 
                 # return stock scores
                 return scores
-        else:
-            # calculate stock scores
-            systemLogger.info("Score not found for {}".format(ticker))
-            scores = calculate_stock_scores(ticker)
+    
+    # calculate stock scores
+    systemLogger.info("Score not found for {}".format(ticker))
+    scores = calculate_stock_scores(ticker)
 
-            # update stock scores to excel file
-            update_stock_scores(scores)
+    # check if scores is not None
+    if scores is not None:
+        # update stock scores to excel file
+        update_stock_scores(scores)
 
-            # return stock scores
-            return scores
+        # return stock scores
+        return scores
     return None
 
 
@@ -231,6 +233,10 @@ def update_stock_scores(stock_scores) -> bool:
 
     # get scores file path from config
     scores_file = config.get("scores").get("file_path")
+
+    # create scores directory if it does not exist
+    if not os.path.exists(os.path.dirname(scores_file)):
+        os.makedirs(os.path.dirname(scores_file))
 
     # check if scores file exists
     if os.path.exists(scores_file):
@@ -258,8 +264,10 @@ def update_stock_scores(stock_scores) -> bool:
         all_scores = pd.concat([all_scores, stock_scores], ignore_index=True)
 
     else:
+        systemLogger.info("No scores file found. Creating new scores file: {}".format(scores_file))
+
         # create scores from stock scores
-        all_scores = all_scores
+        all_scores = stock_scores
 
     try:
         # save scores to parquet file with partition by ticker and date
@@ -407,6 +415,9 @@ def fetch_stock_history(stock_code):
     # create a filename for stock data
     stock_file = f"historical/{stock_code}.xlsx"
 
+    # find directory path of the file and create if not exists
+    os.makedirs(os.path.dirname(stock_file), exist_ok=True)
+
     # create empty dataframe for stock data
     stock_data = pd.DataFrame()
     start_date = None
@@ -530,9 +541,15 @@ def save_portfolio(portfolio):
     # check if portfolio is empty
     if portfolio is None:
         return
-
-    # load portfolio file path from config
+    
+    # find directory path of portfolio file
     portfolio_file_path = config.get("portfolio").get("file_path")
+    portfolio_file_dir = os.path.dirname(portfolio_file_path)
+
+    # check if portfolio file directory exists
+    if not os.path.exists(portfolio_file_dir):
+        # create portfolio file directory
+        os.makedirs(portfolio_file_dir)
 
     # save portfolio to excel file
     portfolio.to_excel(portfolio_file_path, index=False)
