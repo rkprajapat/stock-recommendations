@@ -13,7 +13,6 @@ import sys
 import coloredlogs
 import humanize
 
-
 # Custom Console Logger #
 DEFAULT_LOG_LEVEL = logging.DEBUG
 DEFAULT_LOG_NAME = "app_Log"
@@ -142,7 +141,6 @@ class CustomLogger:
         if self.file_handler:
             self.logger.removeHandler(self.file_handler)
         if not os.path.exists(self.file_log_dir):
-
             os.makedirs(self.file_log_dir)
         self.file_handler = logging.handlers.RotatingFileHandler(
             os.path.join(

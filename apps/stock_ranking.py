@@ -1,19 +1,14 @@
+import time
+
+import humanize
+import numpy as np
 import pandas as pd
 import streamlit as st
-import numpy as np
-import time
-import humanize
-
-from utils.utilities import (
-    calculate_stock_scores,
-    get_stock_scores,
-    get_stock_watchlist,
-    load_portfolio,
-    update_stock_scores,
-    is_good_buy,
-)
 
 from utils.custom_logger import systemLogger
+from utils.utilities import (calculate_stock_scores, get_stock_scores,
+                             get_stock_watchlist, is_good_buy, load_portfolio,
+                             update_stock_scores)
 
 
 # create a function to get stock scores
@@ -76,7 +71,9 @@ def app():
         percent_complete = (index + 1) / len(tickers)
 
         # show spinner
-        progress_label.text(f"Calculating scores for {ticker}... [{percent_complete*100:.2f}%]")
+        progress_label.text(
+            f"Calculating scores for {ticker}... [{percent_complete*100:.2f}%]"
+        )
 
         # calculate average time per ticker
         avg_time_per_ticker = total_time / (index + 1)
@@ -95,7 +92,7 @@ def app():
             systemLogger.info("Force Refreshing Stock Ranks")
             # disable force refresh button
             st.button("Force Refresh", key="force_refresh", disabled=True)
-            
+
             # calculate stock scores
             stock_score = calculate_stock_scores(ticker)
             update_stock_scores(stock_score)
@@ -103,7 +100,6 @@ def app():
             # get stock scores
             systemLogger.info(f"Loading stock scores for {ticker}")
             stock_score = get_stock_scores(ticker)
-            
 
         # if stock score is empty, continue to next ticker
         if stock_score is None or len(stock_score) == 0:

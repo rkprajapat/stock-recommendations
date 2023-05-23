@@ -1,13 +1,11 @@
-
 import base64
 
 import pandas as pd
 import streamlit as st
-from nsetools import Nse
-
-nse = Nse()
+import yfinance as yf
 
 from utils.config import Config
+from utils.ticker_data import Ticker
 from utils.utilities import load_portfolio
 
 # create a config object
@@ -33,33 +31,31 @@ def calculate_total_investment(portfolio):
     portfolio = portfolio[portfolio["ticker"].isin(holding_tickers)]
 
     # calculate a multiplier for each transaction
-    portfolio["multiplier"] = portfolio["quantity"] * portfolio["price"]
+    portfolio["total_investment"] = portfolio["quantity"] * portfolio["price"]
 
     # calculate total quantity, average price and total investment by ticker
     agg_portfolio = portfolio.groupby(["ticker", "company_name"]).agg(
         {
             "quantity": "sum",
             "price": "mean",
-            "multiplier": "sum",
+            "total_investment": "sum",
         }
     )
 
+    # reset index
+    agg_portfolio = agg_portfolio.reset_index()
+
     # calculate average price
     agg_portfolio["average_price"] = (
-        agg_portfolio["multiplier"] / agg_portfolio["quantity"]
+        agg_portfolio["total_investment"] / agg_portfolio["quantity"]
     )
 
     # drop multiplier and price columns
-    agg_portfolio = agg_portfolio.drop(["multiplier", "price"], axis=1)
-
-    # calculate total investment
-    agg_portfolio["total_investment"] = (
-        agg_portfolio["quantity"] * agg_portfolio["average_price"]
-    )
+    # agg_portfolio = agg_portfolio.drop(["multiplier", "price"], axis=1)
 
     # get latest price
-    agg_portfolio["latest_price"] = agg_portfolio.index.get_level_values("ticker").map(
-        lambda x: nse.get_quote(x)["lastPrice"]
+    agg_portfolio["latest_price"] = agg_portfolio.apply(
+        lambda x: Ticker(ticker=x["ticker"]).latest_price, axis=1
     )
 
     # calculate current value
@@ -79,9 +75,6 @@ def calculate_total_investment(portfolio):
 
     # sort by profit/loss percentage
     agg_portfolio = agg_portfolio.sort_values("profit/loss percentage", ascending=False)
-
-    # reset index
-    agg_portfolio = agg_portfolio.reset_index()
 
     # reset index
     agg_portfolio = agg_portfolio.reset_index(drop=True)

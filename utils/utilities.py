@@ -1,25 +1,26 @@
-import os
-from datetime import date, datetime, time, timedelta
-import schedule
-import sys
-import os
 import atexit
+import os
+import sys
+from datetime import date, datetime, time, timedelta
 
+import numpy as np
 import pandas as pd
 import pandas_ta as ta
-from nsepy import get_history
+import schedule
+import yfinance as yf
 from pandas_market_calendars import get_calendar
-import numpy as np
 
 import utils.technical_analysis as techA
 from utils.config import Config
 from utils.custom_logger import systemLogger
 from utils.perf_monitor import monitor_performance
+from utils.ticker_data import Ticker
 
 # create a config object
 config = Config()
 # load config
 config = config.load_config()
+
 
 # return current and last quarter names
 @monitor_performance
@@ -63,11 +64,12 @@ def get_quarter_names():
             quarter_start = datetime(quarter_year, 10, 1)
             quarter_end = datetime(quarter_year, 12, 31)
 
-        quarter_name = 'Q' + str(quarter) + ' ' + str(quarter_year)
+        quarter_name = "Q" + str(quarter) + " " + str(quarter_year)
 
         return quarter_name, quarter_start, quarter_end
 
     return get_quarter_dates(current_quarter_key), get_quarter_dates(prev_quarter_key)
+
 
 # run a function every day at a specific time
 def run_daily_at_time(func, hour, minute):
@@ -79,6 +81,7 @@ def run_daily_at_time(func, hour, minute):
         schedule.run_pending()
         time.sleep(1)
         break
+
 
 # daemonize the process
 def daemonize():
@@ -104,12 +107,13 @@ def daemonize():
 
     sys.stdout.flush()
     sys.stderr.flush()
-    si = open(os.devnull, 'r')
-    so = open(os.devnull, 'a+')
-    se = open(os.devnull, 'a+')
+    si = open(os.devnull, "r")
+    so = open(os.devnull, "a+")
+    se = open(os.devnull, "a+")
     os.dup2(si.fileno(), sys.stdin.fileno())
     os.dup2(so.fileno(), sys.stdout.fileno())
     os.dup2(se.fileno(), sys.stderr.fileno())
+
 
 # return the stock code watchlist
 @monitor_performance
@@ -119,16 +123,21 @@ def get_stock_watchlist():
 
     # check if stock watchlist exists
     if os.path.exists(stock_watchlist_path):
-        systemLogger.info("Loading stock watchlist from file: {}".format(stock_watchlist_path))
+        systemLogger.info(
+            "Loading stock watchlist from file: {}".format(stock_watchlist_path)
+        )
         # load stock watchlist from excel file
         stock_watchlist = pd.read_excel(stock_watchlist_path, index_col="ticker")
 
-        systemLogger.info("Stock watchlist loaded for {} stocks".format(len(stock_watchlist)))
+        systemLogger.info(
+            "Stock watchlist loaded for {} stocks".format(len(stock_watchlist))
+        )
     else:
         return None
 
     # return stock watchlist
     return stock_watchlist
+
 
 # delte stock scores
 @monitor_performance
@@ -139,8 +148,10 @@ def delete_stock_scores(ticker):
     # check if scores file exists
     if os.path.exists(scores_file):
         # load scores from parquet file loading only for ticker with date column as datetime
-        systemLogger.info("Loading scores from file: {} for {}".format(scores_file, ticker))
-    
+        systemLogger.info(
+            "Loading scores from file: {} for {}".format(scores_file, ticker)
+        )
+
         # load scores from parquet file using pyarrow engine
         scores = pd.read_parquet(scores_file, engine="pyarrow")
 
@@ -156,6 +167,7 @@ def delete_stock_scores(ticker):
 
             systemLogger.info("Scores deleted for {}".format(ticker))
 
+
 # create a function to save or retrieve stock scores
 @monitor_performance
 def get_stock_scores(ticker):
@@ -165,8 +177,10 @@ def get_stock_scores(ticker):
     # check if scores file exists
     if os.path.exists(scores_file):
         # load scores from parquet file loading only for ticker with date column as datetime
-        systemLogger.info("Loading scores from file: {} for {}".format(scores_file, ticker))
-    
+        systemLogger.info(
+            "Loading scores from file: {} for {}".format(scores_file, ticker)
+        )
+
         # load scores from parquet file using pyarrow engine
         scores = pd.read_parquet(scores_file, engine="pyarrow")
 
@@ -182,7 +196,8 @@ def get_stock_scores(ticker):
 
             # get stock scores for ticker and last traded date
             scores = scores[
-                (scores["ticker"] == ticker) & (scores["date"] == last_traded_date_historical)
+                (scores["ticker"] == ticker)
+                & (scores["date"] == last_traded_date_historical)
             ]
 
             # check total records for ticker and last traded date
@@ -193,7 +208,11 @@ def get_stock_scores(ticker):
 
             # if there are more than 1 records, error out and exit
             if total_records > 1:
-                systemLogger.error("Multiple scores exist for ticker: {} and date: {}".format(ticker, last_traded_date_historical))
+                systemLogger.error(
+                    "Multiple scores exist for ticker: {} and date: {}".format(
+                        ticker, last_traded_date_historical
+                    )
+                )
                 delete_stock_scores(ticker)
                 total_records = 0
 
@@ -208,7 +227,7 @@ def get_stock_scores(ticker):
 
                 # return stock scores
                 return scores
-    
+
     # calculate stock scores
     systemLogger.info("Score not found for {}".format(ticker))
     scores = calculate_stock_scores(ticker)
@@ -250,20 +269,31 @@ def update_stock_scores(stock_scores) -> bool:
 
         # get index of all rows for incoming ticker and date from all scores
         index = all_scores[
-            (all_scores["ticker"] == incoming_ticker) & (all_scores["date"] == incoming_max_date)
+            (all_scores["ticker"] == incoming_ticker)
+            & (all_scores["date"] == incoming_max_date)
         ].index
 
-        systemLogger.info("Dropping scores for ticker: {} and date: {}".format(incoming_ticker, incoming_max_date))
+        systemLogger.info(
+            "Dropping scores for ticker: {} and date: {}".format(
+                incoming_ticker, incoming_max_date
+            )
+        )
 
         # drop all rows for incoming ticker and date from all scores
         all_scores.drop(index, inplace=True)
 
-        systemLogger.info("Adding scores for ticker: {} and date: {}".format(incoming_ticker, incoming_max_date))
+        systemLogger.info(
+            "Adding scores for ticker: {} and date: {}".format(
+                incoming_ticker, incoming_max_date
+            )
+        )
         # add incoming scores to scores
         all_scores = pd.concat([all_scores, stock_scores], ignore_index=True)
 
     else:
-        systemLogger.info("No scores file found. Creating new scores file: {}".format(scores_file))
+        systemLogger.info(
+            "No scores file found. Creating new scores file: {}".format(scores_file)
+        )
 
         # create scores from stock scores
         all_scores = stock_scores
@@ -361,7 +391,9 @@ def calculate_stock_scores(ticker):
     stock_scores = merge_scores(
         stock_scores, techA.detrended_price_oscillator_score(stock_history)
     )
-    systemLogger.info("Detrended price oscillator score calculated for {}".format(ticker))
+    systemLogger.info(
+        "Detrended price oscillator score calculated for {}".format(ticker)
+    )
     stock_scores = merge_scores(
         stock_scores, techA.ease_of_movement_score(stock_history)
     )
@@ -402,11 +434,16 @@ def calculate_stock_scores(ticker):
 
     # update datatype for all columns except ticker and date to float
     stock_scores = stock_scores.astype(
-        {col: np.float32 for col in stock_scores.columns if col not in ["ticker", "date"]}
+        {
+            col: np.float32
+            for col in stock_scores.columns
+            if col not in ["ticker", "date"]
+        }
     )
 
     # return stock scores
     return stock_scores
+
 
 # write a function to fetch stock history using nsepy
 @monitor_performance
@@ -424,7 +461,8 @@ def fetch_stock_history(stock_code):
     # check if stock_file exists
     if os.path.exists(stock_file):
         # load existing stock data from excel file
-        stock_data = pd.read_excel(stock_file, index_col="Date")
+        stock_data = pd.read_excel(stock_file, index_col="date")
+        start_date = date.today() - timedelta(days=365 * 2)
 
         if len(stock_data) == 0:
             systemLogger.info(
@@ -455,15 +493,28 @@ def fetch_stock_history(stock_code):
             # convert start_date to datetime.date
             start_date = start_date.date()
 
-    # if there is no start_date, create a start_date that is 2 years ago
-    if start_date == None:
-        start_date = date.today() - timedelta(days=365 * 2)
-
     # get the stock data
-    new_stock_data = get_history(symbol=stock_code, start=start_date, end=date.today())
+    ticker_obj = Ticker(stock_code)
+    new_stock_data = ticker_obj.get_stock_history(start=start_date, end=date.today())
 
     # append the stock data to existing stock data using concat
     stock_data = pd.concat([stock_data, new_stock_data])
+
+    # create a date column from index
+    stock_data["date"] = stock_data.index
+
+    # convert it into datetime column if its not
+    if not isinstance(stock_data["date"], pd.DatetimeIndex):
+        stock_data["date"] = pd.to_datetime(stock_data["date"], utc=True)
+
+    # convert it into date by removing time
+    stock_data["date"] = stock_data["date"].dt.date
+
+    # remove duplicates
+    stock_data.drop_duplicates(subset=["date"], inplace=True)
+
+    # make date as index
+    stock_data.set_index("date", inplace=True)
 
     # if stock data is empty, return false
     if stock_data.empty:
@@ -540,7 +591,7 @@ def save_portfolio(portfolio):
     # check if portfolio is empty
     if portfolio is None:
         return
-    
+
     # find directory path of portfolio file
     portfolio_file_path = config.get("portfolio").get("file_path")
     portfolio_file_dir = os.path.dirname(portfolio_file_path)

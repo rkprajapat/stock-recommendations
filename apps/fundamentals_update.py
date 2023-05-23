@@ -1,12 +1,13 @@
 import streamlit as st
 
-from utils.utilities import get_stock_scores, load_portfolio, update_stock_scores
+from utils.utilities import (get_stock_scores, load_portfolio,
+                             update_stock_scores)
 
 
 def app():
     st.title("Fundamentals Update")
 
-        # add a checkbox to analyse portfolio
+    # add a checkbox to analyse portfolio
     if st.checkbox("Update Portfolio"):
         # load portfolio
         portfolio = load_portfolio()
@@ -46,14 +47,10 @@ def app():
     if last_date is None:
         return
 
-
     # list all fundamentals as input boxes
     fundamentals = {
-        "Piotroski F-Score": st.number_input(
-            "Piotroski F-Score", format="%.2f"
-        ),
+        "Piotroski F-Score": st.number_input("Piotroski F-Score", format="%.2f"),
     }
-
 
     # show a button to update fundamentals
     if st.button("Update"):

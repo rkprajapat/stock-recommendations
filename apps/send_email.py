@@ -2,11 +2,11 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 
-from utils.sell_triggers import compile_sell_triggers
-from utils.utilities import run_daily_at_time
-
 import pandas as pd
 import streamlit as st
+
+from utils.sell_triggers import compile_sell_triggers
+from utils.utilities import run_daily_at_time
 
 
 def app():
@@ -81,6 +81,7 @@ def collect_triggers():
 
     return notifications
 
+
 # use gmail account to send email
 # make sure to enable less secure apps
 # https://myaccount.google.com/lesssecureapps
@@ -92,7 +93,6 @@ def send_email(receivers, subject, content_generator):
 
     try:
         message = content_generator
-
 
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.ehlo()

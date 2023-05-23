@@ -1,23 +1,15 @@
 import pandas as pd
 import streamlit as st
-from nsetools import Nse
-
-nse = Nse()
+import yfinance as yf
 
 from utils.config import Config
+from utils.ticker_data import Ticker
 from utils.utilities import load_portfolio, save_portfolio
 
 # create a config object
 config = Config()
 # load config
 config = config.load_config()
-
-
-# create a function to validate ticker
-def validate_ticker(ticker):
-    if nse.is_valid_code(ticker):
-        return True
-    return False
 
 
 # create a function to add stock in a popup
@@ -31,7 +23,8 @@ def app():
         st.title("Add Stock")
 
         # add a text input to enter ticker and validate it
-        ticker = st.text_input("Ticker", key="ticker")
+        ticker = st.text_input("Ticker", key="ticker").upper()
+
         # add a date input to enter date
         date = st.date_input(
             "Date", key="date", max_value=pd.to_datetime("today").date()
@@ -54,48 +47,29 @@ def app():
     if submit:
         # show progress bar
         with st.spinner("Adding stock..."):
-            # if ticker is valid
-            if validate_ticker(ticker):
-                # add ticker in stock data
-                stock_data["ticker"] = ticker
-                # add company name in stock data
-                stock_data["company_name"] = nse.get_quote(ticker)["companyName"]
-                # add date in stock data
-                stock_data["date"] = date
-                # add quantity in stock data based on transaction type
-                if transaction_type == "Buy":
-                    stock_data["quantity"] = quantity
-                else:
-                    stock_data["quantity"] = -quantity
+            # create a ticker object
+            ticker_obj = Ticker(ticker, date, quantity, price, transaction_type)
 
-                # add price in stock data
-                stock_data["price"] = price
+            stock_data = {
+                "ticker": ticker_obj.ticker,
+                "company_name": ticker_obj.company_name,
+                "date": ticker_obj.date,
+                "quantity": ticker_obj.quantity,
+                "price": ticker_obj.price,
+            }
 
-                # capitalize all columns
-                stock_data["company_name"] = stock_data["company_name"].capitalize()
-                # capitalize ticker
-                stock_data["ticker"] = stock_data["ticker"].upper()
-                # round off price to 2 decimal places
-                stock_data["price"] = round(stock_data["price"], 2)
-                # change quantity to integer
-                stock_data["quantity"] = int(stock_data["quantity"])
+            # load portfolio
+            portfolio = load_portfolio()
+            # if portfolio is empty
+            if portfolio is None:
+                # create a portfolio
+                portfolio = pd.DataFrame(
+                    columns=["ticker", "company_name", "date", "quantity", "price"]
+                )
+            # add stock data in portfolio
+            portfolio = portfolio.append(stock_data, ignore_index=True)
+            # save portfolio
+            save_portfolio(portfolio)
 
-                # load portfolio
-                portfolio = load_portfolio()
-                # if portfolio is empty
-                if portfolio is None:
-                    # create a portfolio
-                    portfolio = pd.DataFrame(
-                        columns=["ticker", "date", "quantity", "price"]
-                    )
-                # add stock data in portfolio
-                portfolio = portfolio.append(stock_data, ignore_index=True)
-                # save portfolio
-                save_portfolio(portfolio)
-
-                # show success message
-                st.success("Stock added successfully")
-
-            else:
-                # show error message
-                st.error("Invalid ticker")
+            # show success message
+            st.success("Stock added successfully")

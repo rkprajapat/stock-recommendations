@@ -1,12 +1,12 @@
-from utils.utilities import load_portfolio, fetch_stock_history
+import os
+import sys
+
 import pandas as pd
-import os, sys
-from nsetools import Nse
+import yfinance as yf
 
-from utils.perf_monitor import monitor_performance
 from utils.custom_logger import systemLogger
-
-nse = Nse()
+from utils.perf_monitor import monitor_performance
+from utils.utilities import fetch_stock_history, load_portfolio
 
 
 # write a function to return compile all sell triggers
@@ -14,7 +14,7 @@ nse = Nse()
 def compile_sell_triggers():
     # create a dictionary to store all sell triggers
     sell_triggers = []
-   
+
     # open portfolio
     portfolio = load_portfolio()
 
@@ -62,7 +62,10 @@ def sell_trigger_ema_sma(ticker, stock_data):
     stock_data["50 SMA"] = stock_data["Close"].rolling(window=50).mean()
 
     # check if 20 EMA was higher previously and is now lower
-    if stock_data["20 EMA"].iloc[-1] > stock_data["50 SMA"].iloc[-1] and stock_data["20 EMA"].iloc[-2] < stock_data["50 SMA"].iloc[-2]:
+    if (
+        stock_data["20 EMA"].iloc[-1] > stock_data["50 SMA"].iloc[-1]
+        and stock_data["20 EMA"].iloc[-2] < stock_data["50 SMA"].iloc[-2]
+    ):
         trigger = {"ticker": ticker, "trigger": "20 EMA and 50 SMA"}
         sell_triggers_ema_sma.append(trigger)
         systemLogger.info(f"20 EMA and 50 SMA sell trigger for {ticker}")
@@ -71,6 +74,7 @@ def sell_trigger_ema_sma(ticker, stock_data):
 
     # return dictionary
     return sell_triggers_ema_sma
+
 
 # write a function to check if stock price is near 52 week high
 # if stock price is within 2% of 52 week high, then we have a sell trigger
@@ -84,17 +88,25 @@ def sell_trigger_52_week_high(ticker, stock_data):
     stock_data["52 Week High"] = stock_data["Close"].rolling(window=252).max()
 
     # get latest price
-    last_price = nse.get_quote(ticker)["lastPrice"]
+    last_price = yf.download(f"{ticker}.NS", period="1d", interval="1m")[
+        "Adj Close"
+    ].iloc[-1]
 
     # calculate the percentage difference between the last price and 52 week high
-    percent_diff = ((last_price - stock_data["52 Week High"].iloc[-1]) / stock_data["52 Week High"].iloc[-1]) * 100
+    percent_diff = (
+        (last_price - stock_data["52 Week High"].iloc[-1])
+        / stock_data["52 Week High"].iloc[-1]
+    ) * 100
 
     # check if its uptrend
     if stock_data["Close"].iloc[-1] > stock_data["Close"].iloc[-2]:
         # check if last price is within 2% of 52 week high
         if abs(percent_diff) < 2:
             # add to dictionary
-            trigger = {"ticker": ticker, "trigger": f"Near 52 Week High, current diff: {(percent_diff):.2f}%"}
+            trigger = {
+                "ticker": ticker,
+                "trigger": f"Near 52 Week High, current diff: {(percent_diff):.2f}%",
+            }
             sell_triggers_52_week_high.append(trigger)
             systemLogger.info(f"Near 52 Week High sell trigger for {ticker}")
         else:
@@ -102,6 +114,7 @@ def sell_trigger_52_week_high(ticker, stock_data):
 
     # return dictionary
     return sell_triggers_52_week_high
+
 
 # create a function to identify if its a downtrend after achieving high after last golden cross
 @monitor_performance
@@ -114,24 +127,31 @@ def sell_trigger_downtrend_after_high(ticker, stock_data):
     stock_data["50 SMA"] = stock_data["Close"].rolling(window=50).mean()
 
     # check if 20EMA is higher than 50 SMA and also previous days 20 EMA is lower than 50 SMA
-    stock_data["Golden Cross"] = (
-        (stock_data["20 EMA"] > stock_data["50 SMA"])
-        & (stock_data["20 EMA"].shift(1) < stock_data["50 SMA"].shift(1))
+    stock_data["Golden Cross"] = (stock_data["20 EMA"] > stock_data["50 SMA"]) & (
+        stock_data["20 EMA"].shift(1) < stock_data["50 SMA"].shift(1)
     )
 
     # get the last date when golden cross happened
-    last_golden_cross_date = stock_data[stock_data["Golden Cross"] == True].iloc[-1].name
+    last_golden_cross_date = (
+        stock_data[stock_data["Golden Cross"] == True].iloc[-1].name
+    )
 
     # find the high after golden cross
-    high_after_golden_cross = stock_data[stock_data.index > last_golden_cross_date]["Close"].max()
+    high_after_golden_cross = stock_data[stock_data.index > last_golden_cross_date][
+        "Close"
+    ].max()
 
     # find the date when it happened
     # we will use this date to check if its a downtrend after high
     # if its a downtrend after high, then we have a sell trigger
-    date_of_high_after_golden_cross = stock_data[stock_data["Close"] == high_after_golden_cross].index[0]
+    date_of_high_after_golden_cross = stock_data[
+        stock_data["Close"] == high_after_golden_cross
+    ].index[0]
 
     # find 3 days EMAs after high
-    ema_3_days_after_high = stock_data[stock_data.index > date_of_high_after_golden_cross]["20 EMA"].iloc[:3]
+    ema_3_days_after_high = stock_data[
+        stock_data.index > date_of_high_after_golden_cross
+    ]["20 EMA"].iloc[:3]
 
     # check if last price is lower than 3 days EMA
     if stock_data["Close"].iloc[-1] < ema_3_days_after_high.iloc[-1]:

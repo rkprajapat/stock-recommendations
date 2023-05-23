@@ -1,27 +1,26 @@
 import os
 import sys
 
+os.environ["MPLCONFIGDIR"] = os.path.join(
+    os.getcwd(), "temp"
+)  # to avoid matplotlib error
+
 import streamlit as st
 
-from apps import (
-    add_stock,
-    fundamentals_update,
-    send_email,
-    stock_analysis,
-    stock_ranking,
-    view_portfolio,
-)
+from apps import (add_stock, fundamentals_update, send_email, stock_analysis,
+                  stock_ranking, view_portfolio)
 from multiapp import MultiApp
 
 root_path = os.path.abspath(
     os.path.join(os.path.dirname(os.path.dirname(__file__)), "..")
 )
 if root_path not in sys.path:
-    print("Adding root path to sys.path: {}".format(root_path))
+    # print("Adding root path to sys.path: {}".format(root_path))
     sys.path.insert(0, root_path)
 
 
 apps = MultiApp()
+
 
 # show page on full width
 st.set_page_config(

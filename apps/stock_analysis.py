@@ -2,13 +2,11 @@ import pandas as pd
 import pandas_ta as ta
 import plotly.graph_objects as go
 import streamlit as st
-from nsetools import Nse
-
-nse = Nse()
 
 # import from apps folder
 from apps.view_portfolio import calculate_total_investment
 from utils.config import Config
+from utils.ticker_data import Ticker
 from utils.utilities import fetch_stock_history, load_portfolio
 
 # create a config object
@@ -214,27 +212,13 @@ def load_stock_base_stats(ticker, history):
     # load stock history
     stock_history = history
 
-    # run a spinner
-    with st.spinner("Loading stock base stats..."):
-        # get latest quote
-        latest_quote = nse.get_quote(ticker)
-
-        # if latest quote is not available
-        if not latest_quote:
-            # show an error message
-            st.error("Latest stock data is not available. Please try again later.")
-            # exit
-            return
+    ticker_obj = Ticker(ticker)
 
     # get last price
-    last_price = latest_quote["lastPrice"]
-    # add last price date in first column as a short text
-    last_price_date = latest_quote["secDate"]
+    last_price, last_price_date = ticker_obj.get_last_price()
 
     # get today's change
-    today_change = latest_quote["change"]
-    # get today's change percentage
-    today_change_percentage = latest_quote["pChange"]
+    today_change, today_change_percentage = ticker_obj.get_last_change()
 
     # calculate average true range
     avg_true_range = calculate_atr(stock_history)
@@ -277,16 +261,16 @@ def load_stock_base_stats(ticker, history):
     )
 
     # add total traded quantity in first column
-    col1.metric(
-        "Total Traded Quantity",
-        value=f'{latest_quote["totalTradedVolume"]:,}',
-        help=f'₹{latest_quote["totalTradedValue"]} Lacs',
-    )
+    # col1.metric(
+    #     "Total Traded Quantity",
+    #     value=f'{latest_quote["totalTradedVolume"]:,}',
+    #     help=f'₹{latest_quote["totalTradedValue"]} Lacs',
+    # )
 
     # add average true range in first column
     col1.metric(
         "Average True Range",
-        value=f'₹{avg_true_range:.2f}',
+        value=f"₹{avg_true_range:.2f}",
     )
 
     # show base stats in second column as 52 Week High (% diff), 52 Week Low (% diff), 52 Week Average (% diff)
@@ -298,13 +282,24 @@ def load_stock_base_stats(ticker, history):
     st.markdown("---")
 
     # calculate stop loss for buy and sell using average true range with result in multiple of 0.05
-    stop_loss_buy = round((stock_history["Close"].iloc[-1] - avg_true_range) / 0.05) * 0.05
-    stop_loss_sell = round((stock_history["Close"].iloc[-1] + avg_true_range) / 0.05) * 0.05
+    stop_loss_buy = (
+        round((stock_history["Close"].iloc[-1] - avg_true_range) / 0.05) * 0.05
+    )
+    stop_loss_sell = (
+        round((stock_history["Close"].iloc[-1] + avg_true_range) / 0.05) * 0.05
+    )
 
     # convert to % of last price
-    stop_loss_buy_percent = (stop_loss_buy - stock_history["Close"].iloc[-1]) / stock_history["Close"].iloc[-1] * 100
-    stop_loss_sell_percent = (stop_loss_sell - stock_history["Close"].iloc[-1]) / stock_history["Close"].iloc[-1] * 100
-
+    stop_loss_buy_percent = (
+        (stop_loss_buy - stock_history["Close"].iloc[-1])
+        / stock_history["Close"].iloc[-1]
+        * 100
+    )
+    stop_loss_sell_percent = (
+        (stop_loss_sell - stock_history["Close"].iloc[-1])
+        / stock_history["Close"].iloc[-1]
+        * 100
+    )
 
     # show stop loss for buy and sell using average true range
     st.markdown(
@@ -317,6 +312,7 @@ def load_stock_base_stats(ticker, history):
     # show columns border
     st.markdown("---")
 
+
 # calculate average true range
 def calculate_atr(history):
     # load stock history
@@ -327,6 +323,7 @@ def calculate_atr(history):
 
     # return average true range
     return atr.iloc[-1]
+
 
 # calculate average cost of a stock
 def get_average_cost(ticker):

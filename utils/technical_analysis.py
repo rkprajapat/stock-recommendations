@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta, timezone
 import numpy as np
 import pandas as pd
 import pandas_ta as ta
-from nsepy import get_history
+import yfinance as yf
 from pandas_market_calendars import get_calendar
 
 from utils.perf_monitor import monitor_performance
@@ -403,7 +403,13 @@ def ultimate_oscillator_score(stock_history):
         )
 
         # add ultimate oscillator to stock history
-        ultimate_oscillator = 1 if ultimate_oscillator.iloc[-1] > 70 else -1 if ultimate_oscillator.iloc[-1] < 30 else 0
+        ultimate_oscillator = (
+            1
+            if ultimate_oscillator.iloc[-1] > 70
+            else -1
+            if ultimate_oscillator.iloc[-1] < 30
+            else 0
+        )
     except:
         ultimate_oscillator = 0
 
@@ -429,7 +435,13 @@ def aroon_score(stock_history):
         )
 
         # add aroon to stock history
-        aroon = 1 if aroon["AROONOSC_25"].iloc[-1] > 50 else -1 if aroon["AROONOSC_25"].iloc[-1] < -50 else 0
+        aroon = (
+            1
+            if aroon["AROONOSC_25"].iloc[-1] > 50
+            else -1
+            if aroon["AROONOSC_25"].iloc[-1] < -50
+            else 0
+        )
     except:
         aroon = 0
 
@@ -456,7 +468,13 @@ def adx_score(stock_history):
         )
 
         # add adx to stock history
-        adx = 1 if adx["ADX_14"].iloc[-1] > 75 else -1 if adx["ADX_14"].iloc[-1] < 25 else 0
+        adx = (
+            1
+            if adx["ADX_14"].iloc[-1] > 75
+            else -1
+            if adx["ADX_14"].iloc[-1] < 25
+            else 0
+        )
     except:
         adx = 0
 
@@ -511,7 +529,13 @@ def stochastic_score(stock_history):
             smooth_d=3,
         )
 
-        sch = 1 if sch['STOCHk_14_3_3'].iloc[-1] > 80 else -1 if sch['STOCHk_14_3_3'].iloc[-1] < 20 else 0
+        sch = (
+            1
+            if sch["STOCHk_14_3_3"].iloc[-1] > 80
+            else -1
+            if sch["STOCHk_14_3_3"].iloc[-1] < 20
+            else 0
+        )
 
     except:
         sch = 0
@@ -533,7 +557,13 @@ def rsi_score(stock_history):
         stock_history["rsi"] = ta.rsi(stock_history["Close"], length=14)
 
         # calculate rsi score
-        rsi = 1 if stock_history["rsi"].iloc[-1] > 70 else -1 if stock_history["rsi"].iloc[-1] < 30 else 0
+        rsi = (
+            1
+            if stock_history["rsi"].iloc[-1] > 70
+            else -1
+            if stock_history["rsi"].iloc[-1] < 30
+            else 0
+        )
     except:
         rsi = 0
 
@@ -558,7 +588,9 @@ def macd_score(stock_history):
         stock_history["macd_signal"] = (
             stock_history["macd"].ewm(span=9, adjust=False).mean()
         )
-        stock_history["macd_hist"] = stock_history["macd"] - stock_history["macd_signal"]
+        stock_history["macd_hist"] = (
+            stock_history["macd"] - stock_history["macd_signal"]
+        )
 
         # calculate macd score
         macd = 1 if stock_history["macd_hist"].iloc[-1] > 0 else 0
