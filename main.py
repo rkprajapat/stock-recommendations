@@ -7,8 +7,14 @@ os.environ["MPLCONFIGDIR"] = os.path.join(
 
 import streamlit as st
 
-from apps import (add_stock, fundamentals_update, send_email, stock_analysis,
-                  stock_ranking, view_portfolio)
+from apps import (
+    add_stock,
+    fundamentals_update,
+    send_email,
+    stock_analysis,
+    stock_ranking,
+    view_portfolio,
+)
 from multiapp import MultiApp
 
 root_path = os.path.abspath(

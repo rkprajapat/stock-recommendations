@@ -3,6 +3,8 @@ from datetime import date, datetime, time, timedelta
 
 import yfinance as yf
 
+from utils.custom_logger import systemLogger
+
 
 class Ticker:
     """Class to store ticker data"""
@@ -73,6 +75,7 @@ class Ticker:
             yf.Ticker(self.ticker).info
             return True
         except:
+            systemLogger.error(f"Invalid ticker {self.ticker}")
             return False
 
     def get_last_price(self) -> tuple:

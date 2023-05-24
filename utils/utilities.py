@@ -127,7 +127,9 @@ def get_stock_watchlist():
             "Loading stock watchlist from file: {}".format(stock_watchlist_path)
         )
         # load stock watchlist from excel file
-        stock_watchlist = pd.read_excel(stock_watchlist_path, index_col="ticker")
+        stock_watchlist = pd.read_excel(
+            stock_watchlist_path, engine="openpyxl", index_col="ticker"
+        )
 
         systemLogger.info(
             "Stock watchlist loaded for {} stocks".format(len(stock_watchlist))
@@ -177,10 +179,6 @@ def get_stock_scores(ticker):
     # check if scores file exists
     if os.path.exists(scores_file):
         # load scores from parquet file loading only for ticker with date column as datetime
-        systemLogger.info(
-            "Loading scores from file: {} for {}".format(scores_file, ticker)
-        )
-
         # load scores from parquet file using pyarrow engine
         scores = pd.read_parquet(scores_file, engine="pyarrow")
 
@@ -273,20 +271,9 @@ def update_stock_scores(stock_scores) -> bool:
             & (all_scores["date"] == incoming_max_date)
         ].index
 
-        systemLogger.info(
-            "Dropping scores for ticker: {} and date: {}".format(
-                incoming_ticker, incoming_max_date
-            )
-        )
-
         # drop all rows for incoming ticker and date from all scores
         all_scores.drop(index, inplace=True)
 
-        systemLogger.info(
-            "Adding scores for ticker: {} and date: {}".format(
-                incoming_ticker, incoming_max_date
-            )
-        )
         # add incoming scores to scores
         all_scores = pd.concat([all_scores, stock_scores], ignore_index=True)
 
@@ -553,6 +540,24 @@ def load_portfolio():
     return portfolio
 
 
+@monitor_performance
+def remove_from_watchlist(ticker):
+    watchlist = get_stock_watchlist()
+
+    # check if ticker is in watchlist. watchlist is a df.
+    if ticker in watchlist.index.values:
+        # remove item from watchlist ticker value is ticker
+        watchlist = watchlist[watchlist.index != ticker]
+
+        # get stock watchlist from config
+        stock_watchlist_path = config.get("watchlist").get("file_path")
+
+        # save watchlist to excel file
+        watchlist.to_excel(stock_watchlist_path, index=True)
+
+        systemLogger.info(f"Removed {ticker} from watchlist")
+
+
 # get last date when nse traded
 @monitor_performance
 def get_last_traded_date() -> tuple[date, date]:
@@ -573,6 +578,14 @@ def get_last_traded_date() -> tuple[date, date]:
     valid_days = calendar.valid_days(start_date=five_days_ago, end_date=today)
     # find the last trading date
     last_trading_date_actual = max(valid_days).date()
+
+    # if last trading date actual is older than 7 days or missing then return None
+    if last_trading_date_actual < five_days_ago:
+        # remove the ticker from watchlist
+        systemLogger.info(
+            f"Last trading date is older than 5 days or missing. Last trading date: {last_trading_date_actual}"
+        )
+        return None, None
 
     # check if current time is before 4:00 PM in India then create historical last trading date
     if datetime.now().time() < time(16, 0) and last_trading_date_actual == today:
@@ -617,18 +630,21 @@ def is_good_buy(ticker):
             return False
 
         # get the last traded date
-        _, last_traded_date_historical = get_last_traded_date()
+        _, last_market_date = get_last_traded_date()
 
         # get the last date from the stock data
         last_date = stock_history.index[-1]
 
-        # check if last_date is equal to last trading date
-        if last_date.date() != last_traded_date_historical:
+        # check if last_date is more than market open date
+        if last_date < last_market_date - timedelta(days=7):
+            systemLogger.info(f"Last trade date is older than 7 days. {last_date}")
+            remove_from_watchlist(ticker)
             return False
 
         # if rsi is more than 60, return false
         rsi = ta.rsi(stock_history["Close"], length=14)
         if rsi[-1] > 60:
+            systemLogger.info(f"RSI is more than 60 for ticker: {ticker}")
             return False
 
         # if macd is negative, return false
@@ -646,6 +662,7 @@ def is_good_buy(ticker):
         #     return False
     except:
         systemLogger.exception("Can not check if its a good buy for ticker: " + ticker)
+        remove_from_watchlist(ticker)
         return False
 
     return True

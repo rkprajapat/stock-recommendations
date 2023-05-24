@@ -6,9 +6,15 @@ import pandas as pd
 import streamlit as st
 
 from utils.custom_logger import systemLogger
-from utils.utilities import (calculate_stock_scores, get_stock_scores,
-                             get_stock_watchlist, is_good_buy, load_portfolio,
-                             update_stock_scores)
+from utils.utilities import (
+    calculate_stock_scores,
+    get_stock_scores,
+    get_stock_watchlist,
+    is_good_buy,
+    load_portfolio,
+    remove_from_watchlist,
+    update_stock_scores,
+)
 
 
 # create a function to get stock scores
@@ -134,8 +140,11 @@ def app():
         # reset index
         stock_ranks.reset_index(drop=True, inplace=True)
 
+        # save stock ranks as excel
+        stock_ranks.to_excel("data\stock_ranks.xlsx", index=False)
+
         # show rank table
-        rank_table.dataframe(stock_ranks)
+        # rank_table.dataframe(stock_ranks)
 
         # update progress bar
         progress_bar.progress(percent_complete)
@@ -148,6 +157,8 @@ def app():
         systemLogger.error("No stock scores found")
         progress_label.text("No stock scores found")
         return
+
+    rank_table.dataframe(stock_ranks)
 
     # update progress label with total tickers processed
     progress_label.text(f"Total tickers processed: {len(tickers)}")

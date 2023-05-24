@@ -1,7 +1,6 @@
 import streamlit as st
 
-from utils.utilities import (get_stock_scores, load_portfolio,
-                             update_stock_scores)
+from utils.utilities import get_stock_scores, load_portfolio, update_stock_scores
 
 
 def app():
