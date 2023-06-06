@@ -43,6 +43,11 @@ def app():
             # load stock history
             stock_history = fetch_stock_history(selected_ticker)
 
+            # check if stock history index is datetime or not
+            if not isinstance(stock_history.index, pd.DatetimeIndex):
+                # convert index to datetime
+                stock_history.index = pd.to_datetime(stock_history.index)
+
             # filter for last 1 year by index date and 1 year delta from today
             stock_history = stock_history[
                 (stock_history.index >= pd.Timestamp.today() - pd.Timedelta(days=365))

@@ -86,7 +86,7 @@ class Ticker:
 
     @property
     def latest_price(self):
-        return self.get_last_price()[0]
+        return yf.Ticker(self.ticker).fast_info['lastPrice']
 
     def get_last_change(self) -> tuple:
         """return last change and last change percentage
@@ -132,3 +132,30 @@ class Ticker:
 
     def get_average_price(self):
         return self.get_total_investment() / self.quantity
+
+    def get_piotroski_score(self):
+        """Calculate Piotroski Score for the stock
+
+        Returns:
+            int: Piotroski Score
+        """
+        score = 0
+        financial_data = yf.Ticker(self.ticker).financials
+
+        if financial_data['ROA'] > 0:
+            score += 1
+        if financial_data['CFO'] > 0:
+            score += 1
+        if financial_data['DILUTION_RATIO'] < 1:
+            score += 1
+        if financial_data['ASSET_TURNOVER'] > financial_data['ASSET_TURNOVER'].shift(1):
+            score += 1
+        if financial_data['CURRENT_RATIO'] > financial_data['CURRENT_RATIO'].shift(1):
+            score += 1
+        if financial_data['LONG_TERM_DEBT_TO_EQUITY_RATIO'] < financial_data['LONG_TERM_DEBT_TO_EQUITY_RATIO'].shift(1):
+            score += 1
+        if (financial_data['GROSS_MARGIN'] - financial_data['GROSS_MARGIN'].shift(1)) > 0:
+            score += 1
+        if financial_data['RETURN_ON_ASSETS'] > financial_data['RETURN_ON_ASSETS'].shift(1):
+            score += 1
+        return score
